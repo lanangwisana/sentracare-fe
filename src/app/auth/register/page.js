@@ -5,12 +5,12 @@ import Link from "next/link";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
+    full_name: "",
     username: "",
     email: "",
+    phone_number: "",
     password: "",
-    confirmPassword: "",
-    fullName: "",
-    phone: "",
+    confirm_password: "",
     address: "",
   });
   const [errors, setErrors] = useState({});
@@ -28,20 +28,15 @@ export default function RegisterPage() {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!form.fullName.trim()) newErrors.fullName = "Nama lengkap wajib diisi";
+    if (!form.full_name.trim()) newErrors.full_name = "Nama lengkap wajib diisi";
     if (!form.username.trim()) newErrors.username = "Username wajib diisi";
     if (!form.email.trim()) newErrors.email = "Email wajib diisi";
     else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Format email tidak valid";
-
     if (!form.password) newErrors.password = "Password wajib diisi";
     else if (form.password.length < 6) newErrors.password = "Password minimal 6 karakter";
-
-    if (!form.confirmPassword) newErrors.confirmPassword = "Konfirmasi password wajib diisi";
-    else if (form.password !== form.confirmPassword) newErrors.confirmPassword = "Password tidak cocok";
-
-    if (!form.phone.trim()) newErrors.phone = "Nomor telepon wajib diisi";
-
+    if (!form.confirm_password) newErrors.confirm_password = "Konfirmasi password wajib diisi";
+    else if (form.password !== form.confirm_password) newErrors.confirm_password = "Password tidak cocok";
+    if (!form.phone_number.trim()) newErrors.phone_number = "Nomor telepon wajib diisi";
     return newErrors;
   };
 
@@ -60,11 +55,12 @@ export default function RegisterPage() {
 
     try {
       const registerData = {
+        full_name: form.full_name,
         username: form.username,
         email: form.email,
+        phone_number: form.phone_number,
         password: form.password,
-        full_name: form.fullName,
-        phone: form.phone,
+        confirm_password: form.confirm_password,
         address: form.address,
         role: "Pasien", // Default role for registration
       };
@@ -78,7 +74,8 @@ export default function RegisterPage() {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.detail || "Registrasi gagal. Silakan coba lagi.");
+        const message = typeof result.detail === "string" ? result.detail : Array.isArray(result.detail) ? result.detail.map((e) => e.detail || JSON.stringify(e)).join(", ") : JSON.stringify(result.detail);
+        throw new Error(message);
       }
 
       setSuccessMessage("Registrasi berhasil! Anda akan diarahkan ke halaman login.");
@@ -88,7 +85,16 @@ export default function RegisterPage() {
         router.push("/auth/login");
       }, 2000);
     } catch (err) {
-      setErrors({ general: err.message });
+      if (typeof err === "string") {
+        setErrors({ general: err });
+      } else if (err instanceof Error) {
+        setErrors({ general: err.message });
+      } else if (Array.isArray(err)) {
+        const messages = err.map((e) => e.detail || JSON.stringify(e)).join(", ");
+        setErrors({ general: messages });
+      } else {
+        setErrors({ general: "Terjadi kesalahan saat registrasi." });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -162,12 +168,12 @@ export default function RegisterPage() {
                   <div className="relative">
                     <input
                       type="text"
-                      name="fullName"
-                      value={form.fullName}
+                      name="full_name"
+                      value={form.full_name}
                       onChange={handleChange}
                       placeholder="Masukkan nama lengkap"
                       className={`w-full px-4 py-3 pl-12 text-gray-800 placeholder:text-gray-400 bg-white border ${
-                        errors.fullName ? "border-red-300" : "border-gray-300"
+                        errors.full_name ? "border-red-300" : "border-gray-300"
                       } rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200`}
                     />
                     <div className="absolute left-3 top-3">
@@ -176,7 +182,7 @@ export default function RegisterPage() {
                       </svg>
                     </div>
                   </div>
-                  {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
+                  {errors.full_name && <p className="text-red-500 text-xs mt-1">{errors.full_name}</p>}
                 </div>
 
                 {/* Username Field */}
@@ -242,12 +248,12 @@ export default function RegisterPage() {
                   <div className="relative">
                     <input
                       type="tel"
-                      name="phone"
-                      value={form.phone}
+                      name="phone_number"
+                      value={form.phone_number}
                       onChange={handleChange}
                       placeholder="08xxxxxxxxxx"
                       className={`w-full px-4 py-3 pl-12 text-gray-800 placeholder:text-gray-400 bg-white border ${
-                        errors.phone ? "border-red-300" : "border-gray-300"
+                        errors.phone_number ? "border-red-300" : "border-gray-300"
                       } rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200`}
                     />
                     <div className="absolute left-3 top-3">
@@ -261,7 +267,7 @@ export default function RegisterPage() {
                       </svg>
                     </div>
                   </div>
-                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                  {errors.phone_number && <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>}
                 </div>
 
                 {/* Password Field */}
@@ -298,12 +304,12 @@ export default function RegisterPage() {
                   <div className="relative">
                     <input
                       type="password"
-                      name="confirmPassword"
-                      value={form.confirmPassword}
+                      name="confirm_password"
+                      value={form.confirm_password}
                       onChange={handleChange}
                       placeholder="Ulangi password"
                       className={`w-full px-4 py-3 pl-12 text-gray-800 placeholder:text-gray-400 bg-white border ${
-                        errors.confirmPassword ? "border-red-300" : "border-gray-300"
+                        errors.confirm_password ? "border-red-300" : "border-gray-300"
                       } rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200`}
                     />
                     <div className="absolute left-3 top-3">
@@ -317,7 +323,7 @@ export default function RegisterPage() {
                       </svg>
                     </div>
                   </div>
-                  {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+                  {errors.confirm_password && <p className="text-red-500 text-xs mt-1">{errors.confirm_password}</p>}
                 </div>
 
                 {/* Address Field (Full width) */}

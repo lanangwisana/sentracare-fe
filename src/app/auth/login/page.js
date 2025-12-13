@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ username: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -44,7 +44,7 @@ export default function LoginPage() {
 
       // redirect sesuai role
       if (payload.role === "Pasien") {
-        router.push("/dashboard-pasien");
+        router.push("/pasien/dashboard-pasien");
       } else if (payload.role === "SuperAdmin") {
         router.push("/admin/dashboard-admin");
       } else if (payload.role === "Dokter") {
@@ -100,8 +100,8 @@ export default function LoginPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    name="username"
-                    value={form.username}
+                    name="identifier"
+                    value={form.identifier}
                     onChange={handleChange}
                     placeholder="Masukkan username atau email"
                     className="w-full px-4 py-3 pl-12 text-gray-800 placeholder:text-gray-400 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200"

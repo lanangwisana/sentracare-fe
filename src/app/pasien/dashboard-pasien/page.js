@@ -62,7 +62,8 @@ export default function DashboardPage() {
     }
   `;
 
-    fetch("http://localhost:8001/graphql", {
+    console.log("Token JWT:", token);
+    fetch("http://127.0.0.1:8001/graphql", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

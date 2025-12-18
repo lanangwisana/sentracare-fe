@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function BookingForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     nama_lengkap: "",
     tanggal_lahir: "",
@@ -23,9 +25,15 @@ export default function BookingForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8001/booking", {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/auth/login");
+        return;
+      }
+      console.log("Token JWT saat submit booking:", token);
+      const response = await fetch("http://127.0.0.1:8001/booking", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData),
       });
 
@@ -413,7 +421,7 @@ export default function BookingForm() {
                 </p>
               </div>
               <div className="flex gap-4">
-                <button type="button" className="px-8 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition duration-200">
+                <button type="button" className="px-8 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition duration-200" onClick={() => router.push("/pasien/dashboard-pasien")}>
                   Kembali
                 </button>
                 <button type="submit" className="px-8 py-3 bg-gradient-to-r from-teal-600 to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:from-teal-700 hover:to-emerald-800 transition duration-200 flex items-center gap-2">

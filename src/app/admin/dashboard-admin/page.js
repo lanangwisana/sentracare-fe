@@ -1,15 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [bookings, setBookings] = useState([]);
   const [obatList, setObatList] = useState([]);
 
   // Fetch graphQL data booking
   useEffect(() => {
-    fetch("http://localhost:8001/graphql", {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/auth/login");
+      return;
+    }
+    fetch("http://127.0.0.1:8001/graphql", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         query: `
         {
@@ -42,7 +49,7 @@ export default function AdminDashboard() {
 
   // Fetch graphQL data obat
   useEffect(() => {
-    fetch("http://localhost:8003/graphql", {
+    fetch("http://127.0.0.1:8003/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -95,7 +102,15 @@ export default function AdminDashboard() {
             </div>
             <span className="font-medium">SuperAdmin</span>
           </div>
-          <button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full flex items-center space-x-2 transition duration-200">
+          <button
+            className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full flex items-center space-x-2 transition duration-200"
+            onClick={() => {
+              localStorage.removeItem("token"); // hapus token
+              localStorage.removeItem("userRole"); // kalau ada role disimpan
+              localStorage.removeItem("username"); // kalau ada username disimpan
+              router.push("/auth/login"); // redirect ke login
+            }}
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -273,7 +288,9 @@ export default function AdminDashboard() {
                 </table>
               </div>
               <div className="mt-6 text-center">
-                <button className="text-teal-600 hover:text-teal-800 font-medium text-sm">View all users →</button>
+                <button className="text-teal-600 hover:text-teal-800 font-medium text-sm" onClick={() => router.push("/admin/view-users")}>
+                  View all users →
+                </button>
               </div>
             </div>
           </div>
@@ -298,7 +315,7 @@ export default function AdminDashboard() {
                   <tbody>
                     {bookings.map((b) => (
                       <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50 transition duration-150">
-                        <td className="py-4 font-medium text-gray-800">#{b.id}</td>
+                        <td className="py-4 font-medium text-gray-800">#00{b.id}</td>
                         <td className="py-4">
                           <div>
                             <p className="font-medium text-gray-800">{b.namaLengkap}</p>
@@ -315,7 +332,9 @@ export default function AdminDashboard() {
                           <span className="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">{b.status}</span>
                         </td>
                         <td className="py-4">
-                          <button className="text-teal-600 hover:text-teal-800 font-medium text-sm">Manage</button>
+                          <button className="text-teal-600 hover:text-teal-800 font-medium text-sm" onClick={() => router.push("/admin/view-bookings")}>
+                            Manage
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -323,7 +342,9 @@ export default function AdminDashboard() {
                 </table>
               </div>
               <div className="mt-6 text-center">
-                <button className="text-teal-600 hover:text-teal-800 font-medium text-sm">View all bookings →</button>
+                <button className="text-teal-600 hover:text-teal-800 font-medium text-sm" onClick={() => router.push("/admin/view-bookings")}>
+                  View all bookings →
+                </button>
               </div>
             </div>
           </div>

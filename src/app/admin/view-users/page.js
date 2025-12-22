@@ -475,16 +475,11 @@ export default function ViewAllUsers() {
       </Head>
 
       {/* Header/Navbar */}
-      <nav className="bg-gradient-to-r from-teal-600 to-emerald-700 text-white p-4 flex justify-between items-center shadow-lg">
+      <nav className="bg-linear-to-r from-teal-600 to-emerald-700 text-white p-4 flex justify-between items-center shadow-lg">
         <div className="flex items-center space-x-3">
           <div className="bg-white/20 p-2 rounded-lg">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0c-.828 0-1.5.672-1.5 1.5s.672 1.5 1.5 1.5 1.5-.672 1.5-1.5-.672-1.5-1.5-1.5z"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h1 className="font-bold text-2xl">
@@ -495,9 +490,9 @@ export default function ViewAllUsers() {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3 bg-white/10 px-4 py-2 rounded-full">
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="font-semibold">S</span>
+              <span className="font-semibold text-white">S</span>
             </div>
-            <span className="font-medium">SuperAdmin</span>
+            <span className="font-medium text-white">SuperAdmin</span>
           </div>
           <button
             className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full flex items-center space-x-2 transition duration-200"
@@ -511,7 +506,7 @@ export default function ViewAllUsers() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span>Logout</span>
+            <span className="text-white">Logout</span>
           </button>
         </div>
       </nav>
@@ -889,7 +884,7 @@ export default function ViewAllUsers() {
             }}
           >
             {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-gray-100/50 flex justify-between items-center bg-gradient-to-r from-white to-gray-50/50 rounded-t-2xl sticky top-0 z-10">
+            <div className="px-8 py-6 border-b border-gray-100/50 flex justify-between items-center bg-linear-to-r from-white to-gray-50/50 rounded-t-2xl sticky top-0 z-10">
               <div>
                 <h3 className="text-2xl font-bold text-gray-800 tracking-tight">Add New User</h3>
                 <p className="text-sm text-gray-500 mt-1">Create a new user account in the system</p>
@@ -914,7 +909,7 @@ export default function ViewAllUsers() {
                 {/* Full Name */}
                 <div>
                   <div className="flex items-center mb-3">
-                    <div className="w-2 h-5 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
+                    <div className="w-2 h-5 bg-linear-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
                     <label className="text-sm font-semibold text-gray-700 tracking-wide">
                       Full Name
                       <span className="text-red-500 ml-1">*</span>
@@ -1032,7 +1027,7 @@ export default function ViewAllUsers() {
                 {/* Phone Number */}
                 <div>
                   <div className="flex items-center mb-3">
-                    <div className="w-2 h-5 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
+                    <div className="w-2 h-5 bg-linear-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
                     <label className="text-sm font-semibold text-gray-700 tracking-wide">
                       Phone Number
                       <span className="text-red-500 ml-1">*</span>
@@ -1138,7 +1133,7 @@ export default function ViewAllUsers() {
 
                 {/* Password Strength Indicator */}
                 {newUser.password && (
-                  <div className="p-4 bg-gradient-to-r from-gray-50/80 to-white border border-gray-100 rounded-xl">
+                  <div className="p-4 bg-linear-to-r from-gray-50/80 to-white border border-gray-100 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">Password Strength</span>
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full ${newUser.password.length >= 8 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
@@ -1210,7 +1205,7 @@ export default function ViewAllUsers() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`px-8 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center space-x-2 ${
+                  className={`px-8 py-3.5 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center space-x-2 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
                 >

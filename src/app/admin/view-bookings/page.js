@@ -13,21 +13,51 @@ export default function ViewAllBookings() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [modalAction, setModalAction] = useState(""); // 'confirm' atau 'cancel'
+  const [modalAction, setModalAction] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+  const [doctors, setDoctors] = useState([]);
+  const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [successMsg, setSuccessMsg] = useState(null);
+  const [viewMode, setViewMode] = useState("table"); // 'table' or 'card'
 
   const getStatusColor = (status) => {
     if (!status) return "bg-gray-100 text-gray-800";
     const normalizedStatus = status.toUpperCase();
     switch (normalizedStatus) {
       case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-amber-50 text-amber-800 border border-amber-200";
       case "CONFIRMED":
-        return "bg-green-100 text-green-800";
+        return "bg-emerald-50 text-emerald-800 border border-emerald-200";
       case "CANCELLED":
-        return "bg-red-100 text-red-800";
+        return "bg-red-50 text-red-800 border border-red-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-50 text-gray-800 border border-gray-200";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    const normalizedStatus = status.toUpperCase();
+    switch (normalizedStatus) {
+      case "PENDING":
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case "CONFIRMED":
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case "CANCELLED":
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+      default:
+        return null;
     }
   };
 
@@ -51,21 +81,11 @@ export default function ViewAllBookings() {
         tanggalPemeriksaan
         jamPemeriksaan
         status
+        doctorName
       }
     }
   `;
 
-  const UPDATE_BOOKING_STATUS_MUTATION = `
-    mutation UpdateBookingStatus($id: Int!, $status: String!) {
-      updateBookingStatus(id: $id, status: $status) {
-        id
-        status
-      }
-    }
-  `;
-  {
-    /* Function fetch data booking*/
-  }
   const fetchBookings = async () => {
     setLoading(true);
     setErrorMsg(null);
@@ -89,14 +109,7 @@ export default function ViewAllBookings() {
       const result = await res.json();
 
       if (result.errors) {
-        // Tampilkan error dengan format yang benar
-        const errorMessages = result.errors
-          .map((e) => {
-            if (typeof e === "string") return e;
-            if (e.message) return e.message;
-            return JSON.stringify(e);
-          })
-          .join(" | ");
+        const errorMessages = result.errors.map((e) => e.message || JSON.stringify(e)).join(" | ");
         setErrorMsg(`GraphQL Error: ${errorMessages}`);
       } else if (result.data && result.data.bookings) {
         setBookings(result.data.bookings);
@@ -111,13 +124,26 @@ export default function ViewAllBookings() {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8002/auth/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setDoctors(data.filter((u) => u.role === "Dokter"));
+      }
+    } catch (err) {
+      console.error("Gagal ambil dokter:", err);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
+    fetchDoctors();
   }, []);
 
-  {
-    /* Update status function */
-  }
   const updateStatus = async (id, status) => {
     setUpdatingId(id);
     setErrorMsg(null);
@@ -128,26 +154,20 @@ export default function ViewAllBookings() {
         setUpdatingId(null);
         return;
       }
-      // DEBUG: Cek apa yang benar-benar dikirim
-      console.log("modalAction:", modalAction);
-      console.log("selectedBooking ID:", id);
-      // Tentukan status berdasarkan modalAction
       const statusValue = modalAction === "confirm" ? "CONFIRMED" : "CANCELLED";
-      // VALIDASI: Pastikan tidak ada typo "CONTENING"
-      if (!["CONFIRMED", "CANCELLED", "PENDING"].includes(statusValue.toUpperCase())) {
-        setErrorMsg(`Invalid status value: ${statusValue}`);
-        return;
+
+      const bodyPayload = { status: statusValue };
+      if (modalAction === "confirm" && selectedDoctor) {
+        bodyPayload.doctor_name = selectedDoctor;
       }
 
-      console.log("Sending status:", statusValue); // Debug
-      // Gunakan REST API
       const res = await fetch(`http://localhost:8001/booking/${id}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: statusValue }),
+        body: JSON.stringify(bodyPayload),
       });
 
       if (!res.ok) {
@@ -155,10 +175,10 @@ export default function ViewAllBookings() {
         throw new Error(error.detail || "Failed to update status");
       }
 
-      const updatedBooking = await res.json();
-
-      // Update local state
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: updatedBooking.status } : b)));
+      await res.json();
+      fetchBookings();
+      setSuccessMsg(`Booking berhasil di-${modalAction === 'confirm' ? 'konfirmasi' : 'batal'}!`);
+      setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err) {
       setErrorMsg(err.message || "Network error while updating status");
     } finally {
@@ -167,13 +187,11 @@ export default function ViewAllBookings() {
   };
 
   useEffect(() => {
-    // Prevent body scroll when modal is open
     if (showConfirmModal || showCancelModal) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
     }
-
     return () => {
       document.body.style.overflow = "unset";
     };
@@ -184,49 +202,52 @@ export default function ViewAllBookings() {
     setModalAction("confirm");
     setShowConfirmModal(true);
   };
-
   const openCancelModal = (booking) => {
     setSelectedBooking(booking);
     setModalAction("cancel");
     setShowCancelModal(true);
   };
-
   const closeModal = () => {
     setShowConfirmModal(false);
     setShowCancelModal(false);
     setSelectedBooking(null);
     setModalAction("");
     setCancelReason("");
+    setSelectedDoctor("");
   };
 
   const handleConfirmAction = async () => {
     if (!selectedBooking) return;
+    if (modalAction === "confirm" && !selectedDoctor) {
+      alert("Silakan pilih dokter terlebih dahulu!");
+      return;
+    }
     await updateStatus(selectedBooking.id);
     closeModal();
   };
 
   const stats = useMemo(() => {
     const total = bookings.length;
-    const normalizeStatus = (status) => {
-      if (!status) return "";
-      return status.toUpperCase();
-    };
+    const normalizeStatus = (status) => (status ? status.toUpperCase() : "");
     const pending = bookings.filter((b) => normalizeStatus(b.status) === "PENDING").length;
     const confirmed = bookings.filter((b) => normalizeStatus(b.status) === "CONFIRMED").length;
     const cancelled = bookings.filter((b) => normalizeStatus(b.status) === "CANCELLED").length;
     return { total, pending, confirmed, cancelled };
   }, [bookings]);
 
+  const handleRefresh = () => {
+    fetchBookings();
+    setSuccessMsg("Data booking berhasil di-refresh!");
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-teal-50">
       <Head>
         <title>All Bookings - Admin Dashboard</title>
-        <meta name="description" content="View all bookings in the system" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
-
       {/* Header/Navbar */}
-      <nav className="bg-gradient-to-r from-teal-600 to-emerald-700 text-white p-4 flex justify-between items-center shadow-lg">
+      <nav className="bg-linear-to-r from-teal-600 to-emerald-700 text-white p-4 flex justify-between items-center shadow-lg">
         <div className="flex items-center space-x-3">
           <div className="bg-white/20 p-2 rounded-lg">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -241,356 +262,521 @@ export default function ViewAllBookings() {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3 bg-white/10 px-4 py-2 rounded-full">
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="font-semibold">S</span>
+              <span className="font-semibold text-white">S</span>
             </div>
-            <span className="font-medium">SuperAdmin</span>
+            <span className="font-medium text-white">SuperAdmin</span>
           </div>
           <button
             className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full flex items-center space-x-2 transition duration-200"
             onClick={() => {
-              localStorage.removeItem("token"); // hapus token
-              localStorage.removeItem("userRole"); // kalau ada role disimpan
-              localStorage.removeItem("username"); // kalau ada username disimpan
-              router.push("/auth/login"); // redirect ke login
+              localStorage.removeItem("token");
+              localStorage.removeItem("userRole");
+              localStorage.removeItem("username");
+              router.push("/auth/login");
             }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span>Logout</span>
+            <span className="text-white">Logout</span>
           </button>
         </div>
       </nav>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Booking Management</h1>
-            <p className="text-gray-600 mt-2">View and manage all bookings in the system</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Booking Management</h1>
+            <p className="text-gray-600">View and manage all patient bookings in the system</p>
           </div>
-          <Link href="/admin/dashboard-admin">
-            <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition duration-200">← Back to Dashboard</button>
-          </Link>
+          
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-200">
+              <button
+                onClick={() => setViewMode("table")}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${viewMode === "table" ? "bg-teal-100 text-teal-700" : "text-gray-600 hover:bg-gray-100"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Table
+                </span>
+              </button>
+              <button
+                onClick={() => setViewMode("card")}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${viewMode === "card" ? "bg-teal-100 text-teal-700" : "text-gray-600 hover:bg-gray-100"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  Cards
+                </span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition duration-200 flex items-center space-x-2 shadow-sm"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+            
+            <Link href="/admin/dashboard-admin">
+              <button className="px-4 py-2 bg-linear-to-r from-teal-600 to-emerald-600 text-white rounded-xl hover:from-teal-700 hover:to-emerald-700 transition duration-200 flex items-center space-x-2 shadow-md">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span>Back to Dashboard</span>
+              </button>
+            </Link>
+          </div>
         </div>
 
-        {/* Error / Loading */}
+        {/* Success Message */}
+        {successMsg && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center">
+            <svg className="w-5 h-5 text-emerald-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-emerald-700">{successMsg}</span>
+          </div>
+        )}
+
+        {/* Error Message */}
         {errorMsg && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50/90 backdrop-blur-sm px-5 py-4 text-red-700 shadow-sm">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium">Error: {errorMsg}</span>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center">
+            <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-red-700">{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Total Bookings</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{stats.total}</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
             </div>
-            <div className="mt-2 text-sm">
-              <p className="text-red-600">Tips: Periksa konfigurasi GraphQL server atau hubungi developer backend.</p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Pending</p>
+                <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+              </div>
+              <div className="p-3 bg-amber-100 rounded-full">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Confirmed</p>
+                <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.confirmed}</p>
+              </div>
+              <div className="p-3 bg-emerald-100 rounded-full">
+                <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Cancelled</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{stats.cancelled}</p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bookings Display */}
+        {loading ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent mb-4"></div>
+              <p className="text-gray-600 font-medium">Memuat data bookings...</p>
+              <p className="text-gray-400 text-sm mt-1">Mohon tunggu sebentar</p>
+            </div>
+          </div>
+        ) : viewMode === "table" ? (
+          /* Table View */
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-800">Daftar Bookings</h2>
+              <span className="text-sm text-gray-500">{bookings.length} bookings ditemukan</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID & Patient</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {bookings.map((b) => (
+                    <tr key={b.id} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900">#{String(b.id).padStart(3, '0')}</p>
+                          <p className="text-sm text-gray-600">{b.namaLengkap}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-800">{b.jenisLayanan}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{b.tanggalPemeriksaan}</p>
+                          <p className="text-sm text-gray-500">{b.jamPemeriksaan}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center mr-2">
+                            <span className="text-teal-600 text-sm font-medium">D</span>
+                          </div>
+                          <span className={`font-medium ${b.doctorName ? 'text-teal-700' : 'text-gray-400'}`}>
+                            {b.doctorName || "Belum ditugaskan"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <span className={`px-3 py-1.5 text-xs font-medium rounded-full flex items-center gap-1.5 ${getStatusColor(b.status)}`}>
+                            {getStatusIcon(b.status)}
+                            {formatStatusForDisplay(b.status)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openConfirmModal(b)}
+                            disabled={b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"}
+                            className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${
+                              b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => openCancelModal(b)}
+                            disabled={b.status === "Cancelled" || b.status === "CANCELLED"}
+                            className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${
+                              b.status === "Cancelled" || b.status === "CANCELLED"
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-red-50 text-red-700 hover:bg-red-100"
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          /* Card View */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {bookings.map((b) => (
+              <div key={b.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">ID: #{String(b.id).padStart(3, '0')}</p>
+                    <h3 className="font-bold text-gray-900 text-lg mt-1">{b.namaLengkap}</h3>
+                  </div>
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1.5 ${getStatusColor(b.status)}`}>
+                    {getStatusIcon(b.status)}
+                    {formatStatusForDisplay(b.status)}
+                  </span>
+                </div>
+
+                <div className="space-y-3 mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 rounded-lg">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Layanan</p>
+                      <p className="font-medium text-gray-800">{b.jenisLayanan}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-50 rounded-lg">
+                      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Tanggal & Waktu</p>
+                      <p className="font-medium text-gray-800">{b.tanggalPemeriksaan} • {b.jamPemeriksaan}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-teal-50 rounded-lg">
+                      <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Dokter</p>
+                      <p className={`font-medium ${b.doctorName ? 'text-teal-700' : 'text-gray-400'}`}>
+                        {b.doctorName || "Belum ditugaskan"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => openConfirmModal(b)}
+                    disabled={b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"}
+                    className={`flex-1 py-2 text-sm rounded-xl transition duration-200 flex items-center justify-center gap-1.5 ${
+                      b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-linear-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => openCancelModal(b)}
+                    disabled={b.status === "Cancelled" || b.status === "CANCELLED"}
+                    className={`flex-1 py-2 text-sm rounded-xl transition duration-200 flex items-center justify-center gap-1.5 ${
+                      b.status === "Cancelled" || b.status === "CANCELLED"
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-red-50 text-red-700 hover:bg-red-100"
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Activity & Quick Actions */}
+        {!loading && bookings.length > 0 && (
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-800">Recent Activity</h3>
+                <span className="text-sm text-gray-500">Last 7 days</span>
+              </div>
+              <div className="space-y-4">
+                {bookings.slice(0, 3).map((b) => (
+                  <div key={b.id} className="flex items-center p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors duration-150">
+                    <div className={`p-2 rounded-lg mr-4 ${getStatusColor(b.status)}`}>
+                      {getStatusIcon(b.status)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">
+                        {b.namaLengkap} booked {b.jenisLayanan}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {b.tanggalPemeriksaan} • Status: {formatStatusForDisplay(b.status)}
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-400">Just now</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-6">Quick Actions</h3>
+              <div className="space-y-3">
+                {[
+                  { icon: "📋", label: "Create New Booking", color: "bg-blue-50 text-blue-600" },
+                  { icon: "📊", label: "Export to Excel", color: "bg-emerald-50 text-emerald-600" },
+                  { icon: "🔔", label: "Send Bulk Reminders", color: "bg-amber-50 text-amber-600" },
+                  { icon: "📅", label: "View Calendar", color: "bg-purple-50 text-purple-600" },
+                ].map((action) => (
+                  <button
+                    key={action.label}
+                    className="w-full flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${action.color}`}>
+                        {action.icon}
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{action.label}</span>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
-        {loading && <div className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-700">Loading bookings…</div>}
-
-        {/* Stats Cards (dinamis) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-gray-500 text-sm">Total Bookings</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{stats.total}</p>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-              </div>
-            </div>
-            <p className="text-gray-500 text-sm mt-3">Live</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-gray-500 text-sm">Pending</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{stats.pending}</p>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-            </div>
-            <p className="text-gray-500 text-sm mt-3">Need attention</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-gray-500 text-sm">Confirmed</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{stats.confirmed}</p>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-            </div>
-            <p className="text-green-500 text-sm mt-3">Ready for service</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-gray-500 text-sm">Cancelled</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{stats.cancelled}</p>
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </div>
-            </div>
-            <p className="text-gray-500 text-sm mt-3">Cancelled bookings</p>
-          </div>
-        </div>
-
-        {/* Bookings Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">All Bookings</h2>
-            <div className="flex space-x-4">
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">+ New Booking</button>
-              <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200">Filter</button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {bookings.map((b) => (
-                  <tr key={b.id} className="hover:bg-gray-50 transition duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">#00{b.id}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{b.namaLengkap}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{b.jenisLayanan}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {b.tanggalPemeriksaan} {b.jamPemeriksaan}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(b.status)}`}>{b.status}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 mr-4 disabled:opacity-50" disabled={updatingId === b.id || b.status === "Confirmed" || b.status === "Cancelled"} onClick={() => openConfirmModal(b)}>
-                        {b.status === "Confirmed" || b.status === "CONFIRMED" ? "Confirmed" : "Confirm"}
-                      </button>
-                      <button className="text-red-600 hover:text-red-900 disabled:opacity-50" disabled={updatingId === b.id || b.status === "Cancelled" || b.status === "CANCELLED"} onClick={() => openCancelModal(b)}>
-                        {b.status === "Cancelled" || b.status === "CANCELLED" ? "Cancelled" : "Cancel"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!loading && bookings.length === 0 && (
-                  <tr>
-                    <td className="px-6 py-10 text-center text-gray-500" colSpan={6}>
-                      No bookings found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {/* Pagination (placeholder) */}
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{bookings.length ? 1 : 0}</span> to <span className="font-medium">{bookings.length}</span> of <span className="font-medium">{bookings.length}</span> results
-            </div>
-            <div className="flex space-x-2">
-              <button className="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Previous</button>
-              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">1</button>
-              <button className="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Next</button>
-            </div>
-          </div>
-          {/* Modal untuk Confirm & Cancel */}
-        </div>
-
-        {/* Recent Activity (static example as before) */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:col-span-2">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Booking Activity</h3>
-            <div className="space-y-4">
-              {/* Keep your static activity items or wire up later */}
-              <div className="flex items-start">
-                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path>
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">New booking created</p>
-                  <p className="text-sm text-gray-500">Activity stream placeholder</p>
-                  <p className="text-xs text-gray-400 mt-1">Just now</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150">
-                <span className="text-sm font-medium text-gray-700">Create New Booking</span>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-              </button>
-              <button className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150">
-                <span className="text-sm font-medium text-gray-700">Export to Excel</span>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-              </button>
-              <button className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150">
-                <span className="text-sm font-medium text-gray-700">Send Bulk Reminders</span>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  ></path>
-                </svg>
-              </button>
-              <button className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150">
-                <span className="text-sm font-medium text-gray-700">View Calendar</span>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
       </main>
-      {/* Modal untuk Confirm & Cancel */}
-      {(showConfirmModal || showCancelModal) && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-gradient-to-br from-slate-900/10 to-gray-800/15 backdrop-blur-sm" onClick={closeModal}></div>
 
-          <div className="relative bg-gradient-to-br from-white via-white/97 to-white/95 backdrop-blur-lg rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto border border-white/40">
-            <div className="px-7 py-5 border-b border-gray-200/50">
+      {/* Modals */}
+      {(showConfirmModal || showCancelModal) && selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={closeModal}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-white/20">
+            <div className="px-6 py-5 border-b border-gray-100">
               <div className="flex items-center">
-                <div className={`p-3 rounded-xl mr-4 ${modalAction === "confirm" ? "bg-gradient-to-r from-green-400/15 to-emerald-400/15" : "bg-gradient-to-r from-red-400/15 to-pink-400/15"}`}>
+                <div className={`p-3 rounded-xl mr-4 ${modalAction === "confirm" ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}`}>
                   {modalAction === "confirm" ? (
-                    <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   ) : (
-                    <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   )}
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">{modalAction === "confirm" ? "Confirm Booking" : "Cancel Booking"}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{modalAction === "confirm" ? "Confirm this booking appointment" : "Cancel this booking appointment"}</p>
+                  <p className="text-sm text-gray-600 mt-1">ID: #{String(selectedBooking.id).padStart(3, '0')}</p>
                 </div>
               </div>
             </div>
 
-            <div className="px-7 py-6">
-              {selectedBooking && (
-                <div className="mb-6">
-                  <h4 className="font-semibold text-gray-800 mb-3 text-base">Booking Details:</h4>
-                  <div className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 p-4 rounded-xl border border-gray-200/50 backdrop-blur-sm">
-                    <div className="space-y-3">
-                      <div className="flex items-center">
-                        <div className="text-gray-700 w-1/3 text-sm">ID:</div>
-                        <div className="font-semibold text-gray-900">#{selectedBooking.id}</div>
-                      </div>
-
-                      <div className="flex items-center">
-                        <div className="text-gray-700 w-1/3 text-sm">Patient:</div>
-                        <div className="font-semibold text-gray-900">{selectedBooking.namaLengkap}</div>
-                      </div>
-
-                      <div className="flex items-center">
-                        <div className="text-gray-700 w-1/3 text-sm">Service:</div>
-                        <div className="font-semibold text-gray-900">{selectedBooking.jenisLayanan}</div>
-                      </div>
-
-                      <div className="flex items-center">
-                        <div className="text-gray-700 w-1/3 text-sm">Date & Time:</div>
-                        <div className="font-semibold text-gray-900">
-                          {selectedBooking.tanggalPemeriksaan} {selectedBooking.jamPemeriksaan}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center">
-                        <div className="text-gray-700 w-1/3 text-sm">Status:</div>
-                        <div className="font-semibold">
-                          <span className={`px-2.5 py-1 text-xs rounded-full ${getStatusColor(selectedBooking.status)}`}>{formatStatusForDisplay(selectedBooking.status)}</span>
-                        </div>
-                      </div>
-                    </div>
+            <div className="px-6 py-5">
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Patient:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedBooking.namaLengkap}</span>
                   </div>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <div className="bg-blue-50/60 border border-blue-200/50 rounded-xl p-4 backdrop-blur-sm">
-                  <p className="text-gray-700 text-sm leading-relaxed">
-                    {modalAction === "confirm" ? "Are you sure you want to confirm this booking? The patient will be notified about the confirmation." : "Are you sure you want to cancel this booking? This action cannot be undone."}
-                  </p>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Service:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedBooking.jenisLayanan}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Date & Time:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedBooking.tanggalPemeriksaan} {selectedBooking.jamPemeriksaan}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Current Status:</span>
+                    <span className={`px-2.5 py-1 text-xs rounded-full flex items-center gap-1 ${getStatusColor(selectedBooking.status)}`}>
+                      {getStatusIcon(selectedBooking.status)}
+                      {formatStatusForDisplay(selectedBooking.status)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
+              {modalAction === "confirm" && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assign Doctor:</label>
+                  <select
+                    value={selectedDoctor}
+                    onChange={(e) => setSelectedDoctor(e.target.value)}
+                    className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition duration-200 appearance-none"
+                  >
+                    <option value="">-- Select Doctor --</option>
+                    {doctors.map((d) => (
+                      <option key={d.id} value={d.username}>
+                        Dr. {d.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {modalAction === "cancel" && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Reason for cancellation (optional)</label>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Cancellation:</label>
                   <textarea
                     rows="3"
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
-                    className="w-full px-4 py-3 text-sm border border-gray-300/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition duration-200"
+                    className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-200"
                     placeholder="Enter reason for cancellation..."
                   />
                 </div>
               )}
             </div>
 
-            <div className="px-7 py-5 border-t border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50 flex justify-end space-x-4">
-              <button onClick={closeModal} className="px-5 py-2.5 text-sm font-medium border border-gray-300/60 rounded-lg text-gray-700 hover:bg-gray-100/80 transition duration-200">
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={closeModal}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition duration-200"
+              >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmAction}
-                disabled={updatingId === selectedBooking?.id}
-                className={`px-5 py-2.5 text-sm font-medium rounded-lg text-white transition duration-200 ${
-                  modalAction === "confirm" ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700" : "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                disabled={updatingId || (modalAction === "confirm" && !selectedDoctor)}
+                className={`px-5 py-2.5 text-sm font-medium text-white rounded-xl transition duration-200 flex items-center gap-2 ${
+                  modalAction === "confirm"
+                    ? "bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50"
+                    : "bg-linear-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 disabled:opacity-50"
+                }`}
               >
-                {updatingId === selectedBooking?.id ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                {updatingId ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Processing...
-                  </span>
+                  </>
                 ) : modalAction === "confirm" ? (
                   "Confirm Booking"
                 ) : (

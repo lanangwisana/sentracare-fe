@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -8,6 +8,15 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Bersihkan semua token saat halaman login dibuka
+  useEffect(() => {
+    localStorage.removeItem("doctorToken");
+    localStorage.removeItem("activeDoctorName");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("username");
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,21 +45,33 @@ export default function LoginPage() {
 
       // decode JWT untuk ambil role
       const payload = JSON.parse(atob(token.split(".")[1]));
+      const role = payload.role;
+      const username = form.identifier;
 
-      // simpan token di localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("userRole", payload.role);
-      localStorage.setItem("username", form.username);
-
-      // redirect sesuai role
-      if (payload.role === "Pasien") {
-        router.push("/pasien/dashboard-pasien");
-      } else if (payload.role === "SuperAdmin") {
-        router.push("/admin/dashboard-admin");
-      } else if (payload.role === "Dokter") {
-        router.push("/dashboard-dokter");
-      } else {
-        setError("Role tidak dikenali");
+      // Simpan token sesuai role
+      if (role === "Dokter") {
+        localStorage.setItem("doctorToken", token);
+        localStorage.setItem("activeDoctorName", payload.sub);
+      }
+      localStorage.setItem("token", token); // universal
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("username", username);
+      // Redirect sesuai role
+      switch (role) {
+        case "Pasien":
+          router.push("/pasien/dashboard-pasien");
+          break;
+        case "SuperAdmin":
+          router.push("/admin/dashboard-admin");
+          break;
+        case "Dokter":
+          router.push("/admin/dashboard-doctor");
+          {
+            /*seharusnya masuk ke /dashboard-dokter*/
+          }
+          break;
+        default:
+          setError("Role tidak dikenali");
       }
     } catch (err) {
       setError("Terjadi kesalahan koneksi. Periksa koneksi internet Anda.");

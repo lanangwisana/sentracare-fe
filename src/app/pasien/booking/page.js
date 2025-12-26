@@ -54,11 +54,11 @@ export default function BookingForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50 flex items-center justify-center p-4 md:p-6">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-teal-50 flex items-center justify-center p-4 md:p-6">
       <div className="w-full max-w-6xl">
         {/* Header Section */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-teal-500 to-emerald-600 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-r from-teal-500 to-emerald-600 rounded-2xl mb-4 shadow-lg">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -80,7 +80,7 @@ export default function BookingForm() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           {/* Form Header */}
-          <div className="bg-gradient-to-r from-teal-600 to-emerald-700 px-8 py-6">
+          <div className="bg-linear-to-r from-teal-600 to-emerald-700 px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-white">Formulir Pendaftaran</h2>
@@ -160,10 +160,10 @@ export default function BookingForm() {
                       <option value="" className="text-gray-400">
                         Pilih jenis kelamin
                       </option>
-                      <option value="Laki-laki" className="text-gray-800">
+                      <option value="LAKI_LAKI" className="text-gray-800">
                         Laki-laki
                       </option>
-                      <option value="Perempuan" className="text-gray-800">
+                      <option value="PEREMPUAN" className="text-gray-800">
                         Perempuan
                       </option>
                     </select>
@@ -289,13 +289,13 @@ export default function BookingForm() {
                       <option value="" className="text-gray-400">
                         Pilih jenis layanan
                       </option>
-                      <option value="Medical Check-Up" className="text-gray-800">
+                      <option value="MEDICAL_CHECKUP" className="text-gray-800">
                         Medical Check Up
                       </option>
-                      <option value="Vaksinasi" className="text-gray-800">
+                      <option value="VAKSINASI" className="text-gray-800">
                         Vaksinasi
                       </option>
-                      <option value="Lab Tes" className="text-gray-800">
+                      <option value="LAB_TES" className="text-gray-800">
                         Lab Tes
                       </option>
                     </select>
@@ -319,22 +319,22 @@ export default function BookingForm() {
                       <option value="" className="text-gray-400">
                         Pilih tipe layanan
                       </option>
-                      <option value="Medical Check-Up Full Body" className="text-gray-800">
+                      <option value="FULL_BODY" className="text-gray-800">
                         Medical Check-Up Full Body
                       </option>
-                      <option value="Vaksinasi HPV" className="text-gray-800">
+                      <option value="HPV" className="text-gray-800">
                         Vaksinasi HPV
                       </option>
-                      <option value="Vaksinasi Anak & Bayi" className="text-gray-800">
+                      <option value="ANAK_BAYI" className="text-gray-800">
                         Vaksinasi Anak dan Bayi
                       </option>
-                      <option value="Tes Darah" className="text-gray-800">
+                      <option value="TES_DARAH" className="text-gray-800">
                         Tes Darah
                       </option>
-                      <option value="Tes Hormon" className="text-gray-800">
+                      <option value="TES_HORMON" className="text-gray-800">
                         Tes Hormon
                       </option>
-                      <option value="Tes Urine" className="text-gray-800">
+                      <option value="TES_URINE" className="text-gray-800">
                         Tes Urine
                       </option>
                     </select>

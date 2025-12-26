@@ -16,7 +16,7 @@ export default function ViewAllBookings() {
   const [modalAction, setModalAction] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [doctors, setDoctors] = useState([]);
-  const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [viewMode, setViewMode] = useState("table"); // 'table' or 'card'
 
@@ -131,8 +131,12 @@ export default function ViewAllBookings() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+
       if (Array.isArray(data)) {
-        setDoctors(data.filter((u) => u.role === "Dokter"));
+        // PERBAIKAN: Gunakan .toUpperCase() agar sinkron dengan Backend
+        const filteredDoctors = data.filter((u) => u.role && u.role.toUpperCase() === "DOKTER");
+        console.log("Doctors found:", filteredDoctors); // Cek di console browser
+        setDoctors(filteredDoctors);
       }
     } catch (err) {
       console.error("Gagal ambil dokter:", err);
@@ -158,7 +162,12 @@ export default function ViewAllBookings() {
 
       const bodyPayload = { status: statusValue };
       if (modalAction === "confirm" && selectedDoctor) {
-        bodyPayload.doctor_name = selectedDoctor;
+        if (!selectedDoctor) {
+          alert("Silakan pilih dokter terlebih dahulu!");
+          return;
+        }
+        bodyPayload.doctor_name = selectedDoctor.name;
+        bodyPayload.doctor_email = selectedDoctor.email;
       }
 
       const res = await fetch(`http://localhost:8001/booking/${id}/status`, {
@@ -177,7 +186,7 @@ export default function ViewAllBookings() {
 
       await res.json();
       fetchBookings();
-      setSuccessMsg(`Booking berhasil di-${modalAction === 'confirm' ? 'konfirmasi' : 'batal'}!`);
+      setSuccessMsg(`Booking berhasil di-${modalAction === "confirm" ? "konfirmasi" : "batal"}!`);
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err) {
       setErrorMsg(err.message || "Network error while updating status");
@@ -213,7 +222,7 @@ export default function ViewAllBookings() {
     setSelectedBooking(null);
     setModalAction("");
     setCancelReason("");
-    setSelectedDoctor("");
+    setSelectedDoctor(null);
   };
 
   const handleConfirmAction = async () => {
@@ -290,14 +299,11 @@ export default function ViewAllBookings() {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Booking Management</h1>
             <p className="text-gray-600">View and manage all patient bookings in the system</p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* View Mode Toggle */}
             <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-200">
-              <button
-                onClick={() => setViewMode("table")}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${viewMode === "table" ? "bg-teal-100 text-teal-700" : "text-gray-600 hover:bg-gray-100"}`}
-              >
+              <button onClick={() => setViewMode("table")} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${viewMode === "table" ? "bg-teal-100 text-teal-700" : "text-gray-600 hover:bg-gray-100"}`}>
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -305,29 +311,28 @@ export default function ViewAllBookings() {
                   Table
                 </span>
               </button>
-              <button
-                onClick={() => setViewMode("card")}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${viewMode === "card" ? "bg-teal-100 text-teal-700" : "text-gray-600 hover:bg-gray-100"}`}
-              >
+              <button onClick={() => setViewMode("card")} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${viewMode === "card" ? "bg-teal-100 text-teal-700" : "text-gray-600 hover:bg-gray-100"}`}>
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                    />
                   </svg>
                   Cards
                 </span>
               </button>
             </div>
 
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition duration-200 flex items-center space-x-2 shadow-sm"
-            >
+            <button onClick={handleRefresh} className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition duration-200 flex items-center space-x-2 shadow-sm">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <span>Refresh</span>
             </button>
-            
+
             <Link href="/admin/dashboard-admin">
               <button className="px-4 py-2 bg-linear-to-r from-teal-600 to-emerald-600 text-white rounded-xl hover:from-teal-700 hover:to-emerald-700 transition duration-200 flex items-center space-x-2 shadow-md">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -451,7 +456,7 @@ export default function ViewAllBookings() {
                     <tr key={b.id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-gray-900">#{String(b.id).padStart(3, '0')}</p>
+                          <p className="font-medium text-gray-900">#{String(b.id).padStart(3, "0")}</p>
                           <p className="text-sm text-gray-600">{b.namaLengkap}</p>
                         </div>
                       </td>
@@ -469,9 +474,7 @@ export default function ViewAllBookings() {
                           <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center mr-2">
                             <span className="text-teal-600 text-sm font-medium">D</span>
                           </div>
-                          <span className={`font-medium ${b.doctorName ? 'text-teal-700' : 'text-gray-400'}`}>
-                            {b.doctorName || "Belum ditugaskan"}
-                          </span>
+                          <span className={`font-medium ${b.doctorName ? "text-teal-700" : "text-gray-400"}`}>{b.doctorName || "Belum ditugaskan"}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -502,9 +505,7 @@ export default function ViewAllBookings() {
                             onClick={() => openCancelModal(b)}
                             disabled={b.status === "Cancelled" || b.status === "CANCELLED"}
                             className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${
-                              b.status === "Cancelled" || b.status === "CANCELLED"
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-red-50 text-red-700 hover:bg-red-100"
+                              b.status === "Cancelled" || b.status === "CANCELLED" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-50 text-red-700 hover:bg-red-100"
                             }`}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -527,7 +528,7 @@ export default function ViewAllBookings() {
               <div key={b.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-sm text-gray-500">ID: #{String(b.id).padStart(3, '0')}</p>
+                    <p className="text-sm text-gray-500">ID: #{String(b.id).padStart(3, "0")}</p>
                     <h3 className="font-bold text-gray-900 text-lg mt-1">{b.namaLengkap}</h3>
                   </div>
                   <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1.5 ${getStatusColor(b.status)}`}>
@@ -540,7 +541,12 @@ export default function ViewAllBookings() {
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-50 rounded-lg">
                       <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                        />
                       </svg>
                     </div>
                     <div>
@@ -557,7 +563,9 @@ export default function ViewAllBookings() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Tanggal & Waktu</p>
-                      <p className="font-medium text-gray-800">{b.tanggalPemeriksaan} • {b.jamPemeriksaan}</p>
+                      <p className="font-medium text-gray-800">
+                        {b.tanggalPemeriksaan} • {b.jamPemeriksaan}
+                      </p>
                     </div>
                   </div>
 
@@ -569,9 +577,7 @@ export default function ViewAllBookings() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Dokter</p>
-                      <p className={`font-medium ${b.doctorName ? 'text-teal-700' : 'text-gray-400'}`}>
-                        {b.doctorName || "Belum ditugaskan"}
-                      </p>
+                      <p className={`font-medium ${b.doctorName ? "text-teal-700" : "text-gray-400"}`}>{b.doctorName || "Belum ditugaskan"}</p>
                     </div>
                   </div>
                 </div>
@@ -595,9 +601,7 @@ export default function ViewAllBookings() {
                     onClick={() => openCancelModal(b)}
                     disabled={b.status === "Cancelled" || b.status === "CANCELLED"}
                     className={`flex-1 py-2 text-sm rounded-xl transition duration-200 flex items-center justify-center gap-1.5 ${
-                      b.status === "Cancelled" || b.status === "CANCELLED"
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-red-50 text-red-700 hover:bg-red-100"
+                      b.status === "Cancelled" || b.status === "CANCELLED" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-50 text-red-700 hover:bg-red-100"
                     }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -622,9 +626,7 @@ export default function ViewAllBookings() {
               <div className="space-y-4">
                 {bookings.slice(0, 3).map((b) => (
                   <div key={b.id} className="flex items-center p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors duration-150">
-                    <div className={`p-2 rounded-lg mr-4 ${getStatusColor(b.status)}`}>
-                      {getStatusIcon(b.status)}
-                    </div>
+                    <div className={`p-2 rounded-lg mr-4 ${getStatusColor(b.status)}`}>{getStatusIcon(b.status)}</div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-800">
                         {b.namaLengkap} booked {b.jenisLayanan}
@@ -648,14 +650,9 @@ export default function ViewAllBookings() {
                   { icon: "🔔", label: "Send Bulk Reminders", color: "bg-amber-50 text-amber-600" },
                   { icon: "📅", label: "View Calendar", color: "bg-purple-50 text-purple-600" },
                 ].map((action) => (
-                  <button
-                    key={action.label}
-                    className="w-full flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150 group"
-                  >
+                  <button key={action.label} className="w-full flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150 group">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${action.color}`}>
-                        {action.icon}
-                      </div>
+                      <div className={`p-2 rounded-lg ${action.color}`}>{action.icon}</div>
                       <span className="text-sm font-medium text-gray-700">{action.label}</span>
                     </div>
                     <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -689,7 +686,7 @@ export default function ViewAllBookings() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">{modalAction === "confirm" ? "Confirm Booking" : "Cancel Booking"}</h3>
-                  <p className="text-sm text-gray-600 mt-1">ID: #{String(selectedBooking.id).padStart(3, '0')}</p>
+                  <p className="text-sm text-gray-600 mt-1">ID: #{String(selectedBooking.id).padStart(3, "0")}</p>
                 </div>
               </div>
             </div>
@@ -725,8 +722,13 @@ export default function ViewAllBookings() {
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Assign Doctor:</label>
                   <select
-                    value={selectedDoctor}
-                    onChange={(e) => setSelectedDoctor(e.target.value)}
+                    value={selectedDoctor?.email || ""}
+                    onChange={(e) => {
+                      const doctor = doctors.find((d) => d.username === e.target.value);
+                      if (doctor) {
+                        setSelectedDoctor({ name: doctor.full_name || doctor.username, email: doctor.email });
+                      }
+                    }}
                     className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition duration-200 appearance-none"
                   >
                     <option value="">-- Select Doctor --</option>
@@ -754,10 +756,7 @@ export default function ViewAllBookings() {
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={closeModal}
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition duration-200"
-              >
+              <button onClick={closeModal} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition duration-200">
                 Cancel
               </button>
               <button

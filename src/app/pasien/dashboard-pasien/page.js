@@ -2,6 +2,7 @@
 "use client";
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -91,9 +92,9 @@ export default function DashboardPage() {
       <Head>
         <title>SentraCare Dashboard Pasien</title>
       </Head>
-      <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-teal-50">
+      <div className="flex min-h-screen bg-linear-to-br from-gray-50 to-teal-50">
         {/* Modern Sidebar */}
-        <aside className="w-72 bg-gradient-to-b from-teal-700 to-emerald-800 text-white flex flex-col p-6 space-y-8 shadow-xl">
+        <aside className="w-72 bg-linear-to-b from-teal-700 to-emerald-800 text-white flex flex-col p-6 space-y-8 shadow-xl">
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3 mb-8">
             <div className="bg-white/20 p-2 rounded-xl">
@@ -109,7 +110,7 @@ export default function DashboardPage() {
           {/* User Profile */}
           <div className="bg-white/10 rounded-2xl p-4 mb-6">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-lg">{user ? getInitials(getDisplayName(user)) : "PS"}</div>
+              <div className="w-12 h-12 bg-linear-to-r from-teal-400 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-lg">{user ? getInitials(getDisplayName(user)) : "PS"}</div>
               <div>
                 <p className="font-medium">{user ? getDisplayName(user) : "Pasien"}</p>
                 <p className="text-sm text-teal-100 opacity-80">ID: {user ? `P-${user.id}` : "-"}</p>
@@ -171,7 +172,7 @@ export default function DashboardPage() {
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
               </button>
               <div className="flex items-center space-x-3 bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100">
-                <div className="w-10 h-10 bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold">SA</div>
+                <div className="w-10 h-10 bg-linear-to-r from-teal-400 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold">SA</div>
                 <div className="hidden md:block">
                   <p className="font-medium text-gray-800">{user ? user.full_name : "Pasien"}</p>
                   <p className="text-xs text-gray-500">Pasien</p>
@@ -245,7 +246,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Welcome Banner */}
-          <section className="bg-gradient-to-r from-teal-600 to-emerald-700 text-white p-8 rounded-2xl shadow-lg mb-8">
+          <section className="bg-linear-to-r from-teal-600 to-emerald-700 text-white p-8 rounded-2xl shadow-lg mb-8">
             <div className="flex flex-col md:flex-row items-center justify-between">
               <div className="md:w-2/3">
                 <h1 className="text-3xl font-bold mb-4">Pemeriksaan Kesehatan Mudah & Terpercaya</h1>
@@ -261,7 +262,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="mt-8 md:mt-0">
-                <img src="/illustration.png" alt="Healthcare Illustration" className="w-64 h-auto" />
+                <Image src="/illustration.png" alt="Healthcare Illustration" width={256} height={256} />
               </div>
             </div>
           </section>

@@ -272,7 +272,7 @@ export default function DoctorDashboard() {
           age: p.age || 0,
           gender: p.gender,
           medicalRecordNumber: p.booking_id ? `RM-${p.booking_id}` : `ID-${p.id}`,
-          status: p.records && p.records.length > 0 ? "control" : "new",
+          status: p.records && p.records.length > 0 ? "control" : "new", // Logika status sederhana
         }));
         setPatients(mappedData);
       } else {
@@ -424,27 +424,40 @@ export default function DoctorDashboard() {
   };
 
   // Handler submit resep
-  const handlePrescriptionSubmit = (e) => {
+  const handlePrescriptionSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedPatient) return;
 
-    const prescriptionData = {
-      id: Date.now(), // ini OK karena di dalam event handler
-      patientId: selectedPatient?.id,
-      patientName: selectedPatient?.name,
-      doctorId: user?.id,
-      doctorName: user?.fullname,
-      medicines: prescription.medicines,
-      instructions: prescription.instructions,
-      date: new Date().toISOString(), // ini OK karena di dalam event handler
-      status: "active",
-      prescriptionNumber: prescriptionNumber, // pakai yang dari state
-    };
+    try {
+      const token = localStorage.getItem("doctorToken") || localStorage.getItem("token");
 
-    const existingPrescriptions = JSON.parse(localStorage.getItem("prescriptions") || "[]");
-    localStorage.setItem("prescriptions", JSON.stringify([...existingPrescriptions, prescriptionData]));
+      const payload = {
+        patient_id: selectedPatient.id,
+        record_id: selectedPatient.records?.[0]?.id || null, // opsional
+        medicines: prescription.medicines,
+        instructions: prescription.instructions,
+        prescription_number: prescriptionNumber,
+      };
 
-    alert("Resep obat berhasil dibuat!");
-    setActiveTab("dashboard");
+      const res = await fetch("http://localhost:8004/prescriptions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      console.log("Doctor name:", user.fullname);
+      if (res.ok) {
+        alert("Resep obat berhasil disimpan!");
+        setActiveTab("dashboard");
+      } else {
+        const errData = await res.json();
+        alert("Gagal simpan resep: " + JSON.stringify(errData.detail));
+      }
+    } catch (err) {
+      alert("Terjadi kesalahan koneksi ke server");
+    }
   };
 
   // Filter pasien berdasarkan search
@@ -562,8 +575,11 @@ export default function DoctorDashboard() {
           {activeTab === "dashboard" && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-800">Selamat datang, Dr. {user.fullname}</h1>
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">Online</span>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">Selamat datang, Dr. {user.fullname}</h1>
+                  <p className="text-gray-600 mt-1">Semoga hari Anda menyenangkan</p>
+                </div>
+                <span className="px-3 py-1 bg-linear-to-r from-emerald-100 to-teal-100 text-emerald-800 rounded-full text-sm font-medium border border-emerald-200">Online</span>
               </div>
 
               {/* Quick Stats */}
@@ -571,17 +587,17 @@ export default function DoctorDashboard() {
                 {stats.map((stat, index) => {
                   const Icon = stat.icon;
                   return (
-                    <div key={index} className="bg-white rounded-xl shadow-sm p-6">
+                    <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-500">{stat.label}</p>
                           <p className="text-2xl font-bold text-gray-800 mt-1">{stat.value}</p>
                         </div>
-                        <div className={`${stat.color} p-3 rounded-lg`}>
+                        <div className={`${stat.color} p-3 rounded-lg shadow-sm`}>
                           <Icon className="text-white" />
                         </div>
                       </div>
-                      <div className="mt-4 flex items-center text-sm text-green-600">
+                      <div className="mt-4 flex items-center text-sm text-emerald-600 font-medium">
                         <Icons.TrendingUp className="h-4 w-4 mr-1" />
                         <span>+12% dari kemarin</span>
                       </div>
@@ -593,11 +609,11 @@ export default function DoctorDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Patient List */}
                 <div className="lg:col-span-2">
-                  <div className="bg-white rounded-xl shadow">
-                    <div className="p-6 border-b">
+                  <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+                    <div className="p-6 border-b border-gray-100">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-bold text-gray-800">Daftar Pasien</h2>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Total: {patients.length} pasien</span>
+                        <span className="px-3 py-1 bg-linear-to-r from-emerald-50 to-teal-50 text-emerald-800 rounded-full text-sm border border-emerald-100">Total: {patients.length} pasien</span>
                       </div>
 
                       <div className="flex items-center space-x-4">
@@ -608,10 +624,10 @@ export default function DoctorDashboard() {
                             placeholder="Cari pasien..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                           />
                         </div>
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
+                        <button className="px-4 py-2 border border-gray-300 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition-colors">
                           <Icons.Filter />
                           <span>Filter</span>
                         </button>
@@ -620,21 +636,21 @@ export default function DoctorDashboard() {
 
                     <div className="overflow-x-auto">
                       <table className="w-full">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-linear-to-r from-emerald-50 to-teal-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pasien</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Umur</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">Pasien</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">Umur</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {filteredPatients.map((patient) => (
-                            <tr key={patient.id} className="hover:bg-gray-50">
+                            <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="flex items-center">
-                                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                    <Icons.User className="text-blue-600" />
+                                  <div className="w-10 h-10 bg-linear-to-r from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mr-3">
+                                    <Icons.User className="text-emerald-600" />
                                   </div>
                                   <div>
                                     <div className="font-medium text-gray-900">{patient.name}</div>
@@ -646,7 +662,11 @@ export default function DoctorDashboard() {
                               <td className="px-6 py-4">
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    patient.status === "new" ? "bg-green-100 text-green-800" : patient.status === "emergency" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+                                    patient.status === "new"
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                      : patient.status === "emergency"
+                                      ? "bg-red-100 text-red-800 border border-red-200"
+                                      : "bg-blue-100 text-blue-800 border border-blue-200"
                                   }`}
                                 >
                                   {patient.status === "new" ? "Baru" : patient.status === "emergency" ? "Darurat" : "Kontrol"}
@@ -659,7 +679,7 @@ export default function DoctorDashboard() {
                                       setSelectedPatient(patient);
                                       setActiveTab("medical-record");
                                     }}
-                                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                                    className="px-3 py-1.5 bg-linear-to-r from-emerald-600 to-teal-600 text-white text-sm rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all shadow-sm"
                                   >
                                     Rekam Medis
                                   </button>
@@ -668,7 +688,7 @@ export default function DoctorDashboard() {
                                       setSelectedPatient(patient);
                                       setActiveTab("prescription");
                                     }}
-                                    className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                                    className="px-3 py-1.5 bg-linear-to-r from-cyan-600 to-teal-500 text-white text-sm rounded-lg hover:from-cyan-700 hover:to-teal-600 transition-all shadow-sm"
                                   >
                                     Resep Obat
                                   </button>
@@ -684,18 +704,18 @@ export default function DoctorDashboard() {
 
                 {/* Upcoming Appointments */}
                 <div className="lg:col-span-1">
-                  <div className="bg-white rounded-xl shadow p-6">
+                  <div className="bg-white rounded-xl shadow border border-gray-100 p-6">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-bold text-gray-800">Janji Temu</h2>
-                      <button className="text-blue-600 text-sm font-medium">Lihat Semua</button>
+                      <button className="text-emerald-600 text-sm font-medium hover:text-emerald-700 transition-colors">Lihat Semua</button>
                     </div>
 
                     <div className="space-y-4">
                       {appointments.map((appointment) => (
-                        <div key={appointment.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                        <div key={appointment.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium text-gray-800">{appointment.patientName}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs ${appointment.status === "confirmed" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs ${appointment.status === "confirmed" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-amber-100 text-amber-800 border border-amber-200"}`}>
                               {appointment.status === "confirmed" ? "Dikonfirmasi" : "Menunggu"}
                             </span>
                           </div>
@@ -705,7 +725,9 @@ export default function DoctorDashboard() {
                               {appointment.time} • {appointment.type}
                             </span>
                           </div>
-                          <button className="w-full mt-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100">Mulai Konsultasi</button>
+                          <button className="w-full mt-3 py-2 bg-linear-to-r from-emerald-50 to-teal-50 text-emerald-700 rounded-lg text-sm font-medium hover:from-emerald-100 hover:to-teal-100 transition-all border border-emerald-100">
+                            Mulai Konsultasi
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -717,11 +739,11 @@ export default function DoctorDashboard() {
 
           {/* Medical Record Form */}
           {activeTab === "medical-record" && (
-            <div className="bg-white rounded-xl shadow">
-              <div className="p-6 border-b">
+            <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100 bg-linear-to-r from-emerald-50/50 to-teal-50/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <button onClick={() => setActiveTab("dashboard")} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button onClick={() => setActiveTab("dashboard")} className="p-2 hover:bg-white rounded-lg transition-colors border border-gray-200">
                       <Icons.ArrowLeft />
                     </button>
                     <div>
@@ -731,11 +753,14 @@ export default function DoctorDashboard() {
                   </div>
 
                   <div className="flex items-center space-x-3">
-                    <button onClick={() => window.print()} className="px-4 py-2 border border-gray-300 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
+                    <button onClick={() => window.print()} className="px-4 py-2 border border-gray-300 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition-colors">
                       <Icons.Printer />
                       <span>Cetak</span>
                     </button>
-                    <button onClick={handleMedicalRecordSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-700">
+                    <button
+                      onClick={handleMedicalRecordSubmit}
+                      className="px-4 py-2 bg-linear-to-r from-emerald-600 to-teal-600 text-white rounded-lg flex items-center space-x-2 hover:from-emerald-700 hover:to-teal-700 transition-all shadow-sm"
+                    >
                       <Icons.Save />
                       <span>Simpan Rekam Medis</span>
                     </button>
@@ -746,24 +771,24 @@ export default function DoctorDashboard() {
               <form onSubmit={handleMedicalRecordSubmit} className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Data Pasien */}
-                  <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg">
+                  <div className="md:col-span-2 bg-linear-to-r from-emerald-50 to-teal-50 p-4 rounded-lg border border-emerald-100">
                     <h3 className="font-semibold text-gray-800 mb-2">Data Pasien</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">Nama</label>
-                        <input type="text" value={selectedPatient?.name || ""} disabled className="w-full px-3 py-2 bg-white border rounded-lg" />
+                        <input type="text" value={selectedPatient?.name || ""} disabled className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg" />
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">Umur</label>
-                        <input type="text" value={selectedPatient?.age ? `${selectedPatient.age} tahun` : ""} disabled className="w-full px-3 py-2 bg-white border rounded-lg" />
+                        <input type="text" value={selectedPatient?.age ? `${selectedPatient.age} tahun` : ""} disabled className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg" />
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">Jenis Kelamin</label>
-                        <input type="text" value={selectedPatient?.gender || ""} disabled className="w-full px-3 py-2 bg-white border rounded-lg" />
+                        <input type="text" value={selectedPatient?.gender || ""} disabled className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg" />
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">No. RM</label>
-                        <input type="text" value={selectedPatient?.medicalRecordNumber || ""} disabled className="w-full px-3 py-2 bg-white border rounded-lg" />
+                        <input type="text" value={selectedPatient?.medicalRecordNumber || ""} disabled className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg" />
                       </div>
                     </div>
                   </div>
@@ -780,7 +805,7 @@ export default function DoctorDashboard() {
                           value={medicalRecord.bloodPressure}
                           onChange={handleMedicalRecordChange}
                           placeholder="120/80"
-                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -792,7 +817,7 @@ export default function DoctorDashboard() {
                           onChange={handleMedicalRecordChange}
                           placeholder="36.5"
                           step="0.1"
-                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -803,22 +828,28 @@ export default function DoctorDashboard() {
                           value={medicalRecord.heartRate}
                           onChange={handleMedicalRecordChange}
                           placeholder="72"
-                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                         />
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">Tanggal Periksa</label>
-                        <input type="date" name="visitDate" value={medicalRecord.visitDate} onChange={handleMedicalRecordChange} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        <input
+                          type="date"
+                          name="visitDate"
+                          value={medicalRecord.visitDate}
+                          onChange={handleMedicalRecordChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                        />
                       </div>
                     </div>
+
                     {/* --- FORM DINAMIS BERDASARKAN LAYANAN --- */}
-                    <div className="md:col-span-2 mt-8 pt-6 border-t border-gray-200 bg-gray-50/50 p-4 rounded-xl">
+                    <div className="md:col-span-2 mt-8 pt-6 border-t border-gray-200 bg-linear-to-r from-emerald-50/30 to-teal-50/30 p-4 rounded-xl">
                       <div className="flex items-center space-x-2 mb-6">
-                        <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                        <div className="w-1.5 h-6 bg-linear-to-r from-emerald-500 to-teal-500 rounded-full"></div>
                         <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Detail Hasil {selectedPatient?.tipe_layanan?.replace("_", " ")}</h3>
                       </div>
 
-                      {/* Jika tipe layanan tidak ditemukan di Map */}
                       {!FORM_FIELDS_MAP[selectedPatient?.tipe_layanan] && <p className="text-gray-400 italic text-sm">Tidak ada form tambahan untuk layanan ini.</p>}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -827,7 +858,7 @@ export default function DoctorDashboard() {
                             <label className="block text-[10px] font-bold text-gray-500 uppercase ml-1">{field.label}</label>
                             <input
                               type="text"
-                              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm shadow-sm"
+                              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm shadow-sm"
                               placeholder={`Input ${field.label}...`}
                               value={dynamicFields[field.key] || ""}
                               onChange={(e) => handleDynamicFieldChange(field.key, e.target.value)}
@@ -846,7 +877,7 @@ export default function DoctorDashboard() {
                       value={medicalRecord.diagnosis}
                       onChange={handleMedicalRecordChange}
                       rows="3"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       placeholder="Masukkan diagnosis..."
                     />
                   </div>
@@ -858,7 +889,7 @@ export default function DoctorDashboard() {
                       value={medicalRecord.symptoms}
                       onChange={handleMedicalRecordChange}
                       rows="3"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       placeholder="Deskripsi gejala yang dialami pasien..."
                     />
                   </div>
@@ -871,7 +902,7 @@ export default function DoctorDashboard() {
                       value={medicalRecord.treatment}
                       onChange={handleMedicalRecordChange}
                       rows="4"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       placeholder="Jelaskan rencana pengobatan..."
                     />
                   </div>
@@ -884,25 +915,31 @@ export default function DoctorDashboard() {
                       value={medicalRecord.notes}
                       onChange={handleMedicalRecordChange}
                       rows="4"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       placeholder="Catatan tambahan..."
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tindak Lanjut</label>
-                    <input type="date" name="followUpDate" value={medicalRecord.followUpDate} onChange={handleMedicalRecordChange} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4" />
+                    <input
+                      type="date"
+                      name="followUpDate"
+                      value={medicalRecord.followUpDate}
+                      onChange={handleMedicalRecordChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors mb-4"
+                    />
                     <div className="space-y-2">
                       <label className="flex items-center">
-                        <input type="radio" name="followUpType" value="control" className="mr-2" />
+                        <input type="radio" name="followUpType" value="control" className="mr-2 text-emerald-600" />
                         <span className="text-sm text-gray-700">Kontrol Rutin</span>
                       </label>
                       <label className="flex items-center">
-                        <input type="radio" name="followUpType" value="lab" className="mr-2" />
+                        <input type="radio" name="followUpType" value="lab" className="mr-2 text-emerald-600" />
                         <span className="text-sm text-gray-700">Pemeriksaan Lab</span>
                       </label>
                       <label className="flex items-center">
-                        <input type="radio" name="followUpType" value="specialist" className="mr-2" />
+                        <input type="radio" name="followUpType" value="specialist" className="mr-2 text-emerald-600" />
                         <span className="text-sm text-gray-700">Rujukan Spesialis</span>
                       </label>
                     </div>
@@ -914,11 +951,11 @@ export default function DoctorDashboard() {
 
           {/* Prescription Form */}
           {activeTab === "prescription" && (
-            <div className="bg-white rounded-xl shadow">
-              <div className="p-6 border-b">
+            <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100 bg-linear-to-r from-cyan-50/50 to-teal-50/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <button onClick={() => setActiveTab("dashboard")} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button onClick={() => setActiveTab("dashboard")} className="p-2 hover:bg-white rounded-lg transition-colors border border-gray-200">
                       <Icons.ArrowLeft />
                     </button>
                     <div>
@@ -928,11 +965,14 @@ export default function DoctorDashboard() {
                   </div>
 
                   <div className="flex items-center space-x-3">
-                    <button onClick={() => window.print()} className="px-4 py-2 border border-gray-300 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
+                    <button onClick={() => window.print()} className="px-4 py-2 border border-gray-300 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition-colors">
                       <Icons.Printer />
                       <span>Cetak Resep</span>
                     </button>
-                    <button onClick={handlePrescriptionSubmit} className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center space-x-2 hover:bg-green-700">
+                    <button
+                      onClick={handlePrescriptionSubmit}
+                      className="px-4 py-2 bg-linear-to-r from-cyan-600 to-teal-600 text-white rounded-lg flex items-center space-x-2 hover:from-cyan-700 hover:to-teal-700 transition-all shadow-sm"
+                    >
                       <Icons.Save />
                       <span>Simpan Resep</span>
                     </button>
@@ -942,7 +982,7 @@ export default function DoctorDashboard() {
 
               <form onSubmit={handlePrescriptionSubmit} className="p-6">
                 {/* Header Resep */}
-                <div className="mb-8 p-4 bg-linear-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                <div className="mb-8 p-4 bg-linear-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-gray-800 text-lg">SENTRACARE - RESEP DOKTER</h3>
@@ -959,7 +999,11 @@ export default function DoctorDashboard() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-gray-800">Daftar Obat</h3>
-                    <button type="button" onClick={addMedicine} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg flex items-center space-x-2 hover:bg-blue-100">
+                    <button
+                      type="button"
+                      onClick={addMedicine}
+                      className="px-4 py-2 bg-linear-to-r from-emerald-50 to-teal-50 text-emerald-700 rounded-lg flex items-center space-x-2 hover:from-emerald-100 hover:to-teal-100 transition-all border border-emerald-200"
+                    >
                       <Icons.Plus />
                       <span>Tambah Obat</span>
                     </button>
@@ -967,11 +1011,11 @@ export default function DoctorDashboard() {
 
                   <div className="space-y-4">
                     {prescription.medicines.map((medicine, index) => (
-                      <div key={medicine.id} className="p-4 border rounded-lg bg-gray-50">
+                      <div key={medicine.id} className="p-4 border border-gray-200 rounded-lg bg-linear-to-r from-gray-50/50 to-white">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-medium text-gray-800">Obat #{index + 1}</h4>
                           {prescription.medicines.length > 1 && (
-                            <button type="button" onClick={() => removeMedicine(medicine.id)} className="p-1 text-red-500 hover:bg-red-50 rounded">
+                            <button type="button" onClick={() => removeMedicine(medicine.id)} className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors">
                               <Icons.Trash2 />
                             </button>
                           )}
@@ -980,7 +1024,11 @@ export default function DoctorDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                           <div className="md:col-span-2">
                             <label className="block text-sm text-gray-600 mb-1">Nama Obat</label>
-                            <select value={medicine.name} onChange={(e) => updateMedicine(medicine.id, "name", e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <select
+                              value={medicine.name}
+                              onChange={(e) => updateMedicine(medicine.id, "name", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                            >
                               <option value="">Pilih obat...</option>
                               {medicineOptions.map((option) => (
                                 <option key={option} value={option}>
@@ -997,13 +1045,17 @@ export default function DoctorDashboard() {
                               value={medicine.dosage}
                               onChange={(e) => updateMedicine(medicine.id, "dosage", e.target.value)}
                               placeholder="1 tablet"
-                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                             />
                           </div>
 
                           <div>
                             <label className="block text-sm text-gray-600 mb-1">Frekuensi</label>
-                            <select value={medicine.frequency} onChange={(e) => updateMedicine(medicine.id, "frequency", e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <select
+                              value={medicine.frequency}
+                              onChange={(e) => updateMedicine(medicine.id, "frequency", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                            >
                               <option value="">Pilih...</option>
                               <option value="1x sehari">1x sehari</option>
                               <option value="2x sehari">2x sehari</option>
@@ -1020,7 +1072,7 @@ export default function DoctorDashboard() {
                               value={medicine.duration}
                               onChange={(e) => updateMedicine(medicine.id, "duration", e.target.value)}
                               placeholder="7 hari"
-                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                             />
                           </div>
                         </div>
@@ -1032,7 +1084,7 @@ export default function DoctorDashboard() {
                             value={medicine.notes}
                             onChange={(e) => updateMedicine(medicine.id, "notes", e.target.value)}
                             placeholder="Setelah makan, dll."
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                           />
                         </div>
                       </div>
@@ -1047,13 +1099,13 @@ export default function DoctorDashboard() {
                     value={prescription.instructions}
                     onChange={(e) => handlePrescriptionChange("instructions", e.target.value)}
                     rows="4"
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                     placeholder="Masukkan instruksi khusus untuk pasien..."
                   />
                 </div>
 
                 {/* Tanda Tangan */}
-                <div className="mt-8 pt-6 border-t">
+                <div className="mt-8 pt-6 border-t border-gray-200">
                   <div className="flex justify-between items-end">
                     <div>
                       <p className="text-sm text-gray-600 mb-4">Pasien:</p>

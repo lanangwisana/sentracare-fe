@@ -20,6 +20,65 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [medicalRecords, setMedicalRecords] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [latestWeight, setLatestWeight] = useState("0");
+
+  // Fetch Medical Records (Patient Service - GraphQL Port 8004)
+  const fetchMedicalRecords = (email, token) => {
+    const query = `
+      query GetPatientRecords($email: String!) {
+        patientByEmail(email: $email) {
+          records {
+            id
+            visitDate
+            visitType
+            diagnosis
+            vitalSigns {
+              weight
+            }
+          }
+          prescriptions {
+            id
+            recordId
+            prescriptionNumber
+            doctorName
+            medicines
+            instructions
+            createdAt
+          }
+        }
+      }
+    `;
+
+    fetch("http://localhost:8004/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        query,
+        variables: { email: email },
+      }),
+    })
+      .then((res) => res.json())
+      .then((result) => {
+        console.log("GraphQL raw result:", result);
+        if (result.data && result.data.patientByEmail) {
+          const records = result.data.patientByEmail.records;
+          const prescriptions = result.data.patientByEmail.prescriptions;
+          setMedicalRecords(records);
+          setPrescriptions(prescriptions);
+
+          // Ambil berat badan terbaru dari record paling atas
+          if (records.length > 0 && records[0].vitalSigns?.weight) {
+            setLatestWeight(records[0].vitalSigns.weight);
+          }
+        }
+      })
+      .catch((err) => console.error("Error fetching medical records:", err));
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -39,6 +98,11 @@ export default function DashboardPage() {
       .then((data) => {
         console.log("User data:", data);
         setUser(data);
+        if (data.email) {
+          fetchMedicalRecords(data.email, token);
+        } else {
+          console.warn("User tidak punya email, skip fetchMedicalRecords");
+        }
       })
       .catch((err) => console.error("Error fetching user data:", err));
   }, [router]);
@@ -87,6 +151,41 @@ export default function DashboardPage() {
       .catch((err) => console.error("Error fetching bookings:", err));
   }, [router]);
 
+  // 3. Fetch Booking List (Booking Service - GraphQL Port 8001)
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const query = `
+      query {
+        bookings {
+          id
+          namaLengkap
+          jenisLayanan
+          tanggalPemeriksaan
+          jamPemeriksaan
+          status
+        }
+      }
+    `;
+
+    fetch("http://localhost:8001/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query }),
+    })
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.data && result.data.bookings) {
+          setBookings(result.data.bookings);
+        }
+      })
+      .catch((err) => console.error("Error fetching bookings:", err));
+  }, []);
+
   return (
     <>
       <Head>
@@ -125,7 +224,7 @@ export default function DashboardPage() {
               <Link href="/pasien/booking">
                 <NavItem icon="📅" label="Booking" />
               </Link>
-              <NavItem icon="📋" label="Hasil Tes" />
+              <NavItem onClick={() => router.push("/pasien")} icon="📋" label="Hasil Tes" />
               <NavItem icon="🏥" label="Layanan" />
               <NavItem icon="👤" label="Profil" />
             </div>
@@ -209,7 +308,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm">Berat Badan</p>
-                  <p className="text-2xl font-bold text-gray-800 mt-1">65.0 kg</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">{latestWeight} kg</p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-full">
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -291,7 +390,7 @@ export default function DashboardPage() {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  {bookings.map((b) => (
+                  {bookings.slice(0, 3).map((b) => (
                     <div key={b.id} className="flex items-center p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150">
                       <div className="bg-teal-100 p-3 rounded-lg mr-4">
                         <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -311,8 +410,43 @@ export default function DashboardPage() {
                       <span className="bg-teal-100 text-teal-800 text-xs font-medium px-3 py-1 rounded-full">{b.status}</span>
                     </div>
                   ))}
-                  <div className="mt-6">
-                    <button className="w-full py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition duration-200">Lihat Semua Janji</button>
+                  {/* Tambahkan kondisi untuk empty state */}
+                  {bookings.length === 0 && (
+                    <div className="flex flex-col items-center">
+                      <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z" />
+                      </svg>
+                      <span>Belum ada data pengguna</span>
+                    </div>
+                  )}
+                  {/* Pembatas dan info jumlah data tersisa */}
+                  {bookings.length > 3 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center text-gray-600">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm">Menampilkan 3 dari {bookings.length} list obat</span>
+                      </div>
+                      <div className="text-teal-600 text-sm font-medium">+{bookings.length - 3} lainnya</div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-500">{bookings.length > 0 ? <span>Terakhir diperbarui: {new Date().toLocaleDateString("id-ID")}</span> : <span>Tidak ada data pengguna</span>}</div>
+                    <button
+                      onClick={() => router.push("/pasien/semua-janji")}
+                      disabled={bookings.length === 0}
+                      className={`text-teal-600 hover:text-teal-800 font-medium text-sm flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition duration-200 ${
+                        bookings.length === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-teal-50"
+                      }`}
+                    >
+                      <span>Lihat Semua Janji</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -321,45 +455,69 @@ export default function DashboardPage() {
             {/* Recent Test Results */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100">
-                <h3 className="text-xl font-bold text-gray-800">Hasil Tes Terbaru</h3>
+                <h3 className="text-xl font-bold text-gray-800">Hasil Rekam Medis & Resep</h3>
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                    <div>
-                      <h4 className="font-bold text-gray-800">Tes Darah Lengkap</h4>
-                      <p className="text-gray-600 text-sm">28 Nov 2025</p>
+                  {medicalRecords.slice(0, 3).map((record) => (
+                    <div key={record.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-800">{record.visitType}</h4>
+                        <p className="text-gray-500 text-sm">{new Date(record.visitDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</p>
+                        <p className="text-xs text-teal-600 mt-1 font-medium italic">Diagnosa: {record.diagnosis}</p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Tersedia</span>
+                        <button
+                          onClick={() => {
+                            const relatedPrescription = prescriptions.find((p) => p.recordId === record.id);
+                            alert(`Resep: ${relatedPrescription ? JSON.stringify(relatedPrescription.medicines) : "Tidak ada resep"}`);
+                          }}
+                          className="block text-teal-600 hover:text-teal-800 font-bold text-xs mt-2 uppercase"
+                        >
+                          Detail
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">Normal</span>
-                      <button className="block text-teal-600 hover:text-teal-800 font-medium text-sm mt-2">Lihat Detail</button>
+                  ))}
+                  {/* Tambahkan kondisi untuk empty state */}
+                  {medicalRecords.length === 0 && (
+                    <div className="flex flex-col items-center">
+                      <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z" />
+                      </svg>
+                      <span>Belum ada data pengguna</span>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                    <div>
-                      <h4 className="font-bold text-gray-800">Kolesterol</h4>
-                      <p className="text-gray-600 text-sm">15 Nov 2025</p>
+                  )}
+                  {/* Pembatas dan info jumlah data tersisa */}
+                  {medicalRecords.length > 3 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center text-gray-600">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm">Menampilkan 3 dari {medicalRecords.length} list medical record</span>
+                      </div>
+                      <div className="text-teal-600 text-sm font-medium">+{medicalRecords.length - 3} lainnya</div>
                     </div>
-                    <div className="text-right">
-                      <span className="bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1 rounded-full">Perlu Perhatian</span>
-                      <button className="block text-teal-600 hover:text-teal-800 font-medium text-sm mt-2">Lihat Detail</button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                    <div>
-                      <h4 className="font-bold text-gray-800">Gula Darah Puasa</h4>
-                      <p className="text-gray-600 text-sm">01 Nov 2025</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">Normal</span>
-                      <button className="block text-teal-600 hover:text-teal-800 font-medium text-sm mt-2">Lihat Detail</button>
-                    </div>
-                  </div>
+                  )}
                 </div>
-                <div className="mt-6">
-                  <button className="w-full py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition duration-200">Lihat Riwayat Lengkap</button>
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-500">{medicalRecords.length > 0 ? <span>Terakhir diperbarui: {new Date().toLocaleDateString("id-ID")}</span> : <span>Tidak ada data pengguna</span>}</div>
+                    <button
+                      onClick={() => router.push("/pasien/rekam-medis")}
+                      disabled={medicalRecords.length === 0}
+                      className={`text-teal-600 hover:text-teal-800 font-medium text-sm flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition duration-200 ${
+                        medicalRecords.length === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-teal-50"
+                      }`}
+                    >
+                      <span>Lihat Semua Rekam Medis</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -17,7 +17,7 @@ export default function InsurancePage() {
   });
 
   // URL Backend Insurance
-  const API_URL = "http://localhost:8001";
+  const API_URL = "http://localhost:8005";
 
   // 1. Fetch Data Klaim
   const fetchClaims = async () => {
@@ -97,16 +97,16 @@ export default function InsurancePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 p-4 md:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-purple-50 p-4 md:p-6 lg:p-8 font-sans">
       {/* Header */}
       <header className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg shadow-purple-200">
+            <div className="p-3 bg-linear-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg shadow-purple-200">
               <span className="text-3xl text-white">🛡️</span>
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-700 to-indigo-700 bg-clip-text text-transparent">Insurance Bridge System</h1>
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-linear-to-r from-purple-700 to-indigo-700 bg-clip-text text-transparent">Insurance Bridge System</h1>
               <p className="text-gray-600 text-sm md:text-base mt-1">Simulasi Bridging V-Claim BPJS & Asuransi Swasta (HL7 Standard)</p>
             </div>
           </div>
@@ -115,13 +115,13 @@ export default function InsurancePage() {
           <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-200 w-fit">
             <button
               onClick={() => setActiveTab("history")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeTab === "history" ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"}`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeTab === "history" ? "bg-linear-to-r from-purple-500 to-indigo-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"}`}
             >
               📋 Riwayat
             </button>
             <button
               onClick={() => setActiveTab("submit")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeTab === "submit" ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"}`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeTab === "submit" ? "bg-linear-to-r from-pink-500 to-rose-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"}`}
             >
               📝 Ajukan Klaim
             </button>
@@ -196,7 +196,7 @@ export default function InsurancePage() {
         {/* --- KIRI: Form Input Klaim --- */}
         <div className="lg:col-span-1">
           <div className={`bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 transition-all duration-300 ${activeTab === "submit" ? "ring-2 ring-pink-500" : ""}`}>
-            <div className="bg-gradient-to-r from-pink-500 to-rose-500 px-6 py-4">
+            <div className="bg-linear-to-r from-pink-500 to-rose-500 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -212,7 +212,7 @@ export default function InsurancePage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <span className="text-pink-600">👤</span>
                   Nama Pasien
                 </label>
@@ -234,7 +234,7 @@ export default function InsurancePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <span className="text-pink-600">🆔</span>
                   Nomor BPJS / Polis
                 </label>
@@ -250,7 +250,7 @@ export default function InsurancePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     <span className="text-pink-600">🏥</span>
                     Kode Diagnosa
                   </label>
@@ -269,7 +269,7 @@ export default function InsurancePage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     <span className="text-pink-600">💰</span>
                     Total Tagihan
                   </label>
@@ -288,7 +288,7 @@ export default function InsurancePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <span className="text-pink-600">📋</span>
                   Deskripsi Tindakan Medis
                 </label>
@@ -315,7 +315,7 @@ export default function InsurancePage() {
 
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:shadow-lg hover:shadow-pink-200 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2"
+                  className="w-full bg-linear-to-r from-pink-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:shadow-lg hover:shadow-pink-200 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   <span>🚀</span>
                   Kirim Data ke BPJS / Asuransi
@@ -325,7 +325,7 @@ export default function InsurancePage() {
           </div>
 
           {/* Info Box */}
-          <div className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 border border-purple-100">
+          <div className="mt-6 bg-linear-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 border border-purple-100">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <span className="text-purple-600">ℹ️</span>
@@ -341,7 +341,7 @@ export default function InsurancePage() {
         {/* --- KANAN: Riwayat Klaim --- */}
         <div className="lg:col-span-2">
           <div className={`bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 transition-all duration-300 ${activeTab === "history" ? "ring-2 ring-purple-500" : ""}`}>
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4">
+            <div className="bg-linear-to-r from-purple-600 to-indigo-600 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -366,7 +366,7 @@ export default function InsurancePage() {
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
                   <table className="w-full">
-                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                    <thead className="bg-linear-to-r from-gray-50 to-gray-100">
                       <tr>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                           <div className="flex items-center gap-2">
@@ -399,12 +399,12 @@ export default function InsurancePage() {
                         <tr>
                           <td colSpan="4" className="px-6 py-16 text-center">
                             <div className="flex flex-col items-center">
-                              <div className="p-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full mb-4">
+                              <div className="p-4 bg-linear-to-r from-gray-100 to-gray-200 rounded-full mb-4">
                                 <span className="text-3xl text-gray-400">📋</span>
                               </div>
                               <p className="text-gray-600 font-medium text-lg">Belum ada data klaim</p>
-                              <p className="text-gray-400 mt-1">Ajukan klaim pertama Anda dengan mengklik "Ajukan Klaim"</p>
-                              <button onClick={() => setActiveTab("submit")} className="mt-4 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg font-medium hover:shadow-lg transition-shadow">
+                              <p className="text-gray-400 mt-1">Ajukan klaim pertama Anda dengan mengklik Ajukan Klaim</p>
+                              <button onClick={() => setActiveTab("submit")} className="mt-4 px-4 py-2 bg-linear-to-r from-pink-500 to-rose-500 text-white rounded-lg font-medium hover:shadow-lg transition-shadow">
                                 📝 Ajukan Klaim Baru
                               </button>
                             </div>
@@ -412,7 +412,7 @@ export default function InsurancePage() {
                         </tr>
                       ) : (
                         claims.map((claim) => (
-                          <tr key={claim.id} className="hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-indigo-50/30 transition-colors group">
+                          <tr key={claim.id} className="hover:bg-linear-to-r hover:from-purple-50/30 hover:to-indigo-50/30 transition-colors group">
                             <td className="px-6 py-4">
                               <div className="flex items-start gap-3">
                                 <div className={`p-2 rounded-lg ${claim.status === "APPROVED" ? "bg-green-100" : claim.status === "REJECTED" ? "bg-red-100" : "bg-yellow-100"}`}>
@@ -438,7 +438,7 @@ export default function InsurancePage() {
                             <td className="px-6 py-4">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold text-transparent bg-gradient-to-r from-indigo-700 to-purple-700 bg-clip-text text-lg">Rp {claim.total_bill.toLocaleString("id-ID")}</span>
+                                  <span className="font-bold text-transparent bg-linear-to-r from-indigo-700 to-purple-700 bg-clip-text text-lg">Rp {claim.total_bill.toLocaleString("id-ID")}</span>
                                 </div>
                                 <p className="text-xs text-gray-500">Tanggal: {new Date(claim.created_at || Date.now()).toLocaleDateString("id-ID")}</p>
                               </div>
@@ -449,10 +449,10 @@ export default function InsurancePage() {
                                   <span
                                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
                                       claim.status === "APPROVED"
-                                        ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200"
+                                        ? "bg-linear-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200"
                                         : claim.status === "REJECTED"
-                                        ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border border-red-200"
-                                        : "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border border-yellow-200"
+                                        ? "bg-linear-to-r from-red-100 to-rose-100 text-red-700 border border-red-200"
+                                        : "bg-linear-to-r from-yellow-100 to-amber-100 text-yellow-700 border border-yellow-200"
                                     }`}
                                   >
                                     {claim.status === "APPROVED" && <span>✅</span>}
@@ -464,11 +464,7 @@ export default function InsurancePage() {
                                 <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                   <div
                                     className={`h-full rounded-full ${
-                                      claim.status === "APPROVED"
-                                        ? "bg-gradient-to-r from-green-500 to-emerald-400"
-                                        : claim.status === "REJECTED"
-                                        ? "bg-gradient-to-r from-red-500 to-rose-400"
-                                        : "bg-gradient-to-r from-yellow-500 to-amber-400"
+                                      claim.status === "APPROVED" ? "bg-linear-to-r from-green-500 to-emerald-400" : claim.status === "REJECTED" ? "bg-linear-to-r from-red-500 to-rose-400" : "bg-linear-to-r from-yellow-500 to-amber-400"
                                     }`}
                                     style={{ width: "100%" }}
                                   ></div>
@@ -484,7 +480,7 @@ export default function InsurancePage() {
               )}
 
               {claims.length > 0 && (
-                <div className="mt-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                <div className="mt-6 p-4 bg-linear-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">Total Data:</span> {claims.length} klaim •<span className="ml-2 font-medium">Nilai Total:</span> Rp {stats.totalBill.toLocaleString("id-ID")}
@@ -515,7 +511,7 @@ export default function InsurancePage() {
       <footer className="mt-8 pt-6 border-t border-gray-200">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg">
+            <div className="p-2 bg-linear-to-r from-purple-100 to-indigo-100 rounded-lg">
               <span className="text-purple-600">🛡️</span>
             </div>
             <div>

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 // Ikon SVG sederhana
 const HospitalIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
   </svg>
 );
@@ -50,13 +50,13 @@ const CalendarIcon = () => (
 );
 
 const UsersIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
   </svg>
 );
 
 const ShieldIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -67,7 +67,7 @@ const ShieldIcon = () => (
 );
 
 const PhoneIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -78,20 +78,20 @@ const PhoneIcon = () => (
 );
 
 const MailIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
   </svg>
 );
 
 const MapIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
   </svg>
 );
 
 const ArrowRightIcon = () => (
-  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-4 h-4 ml-2 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
   </svg>
 );
@@ -185,7 +185,7 @@ const SentraCareLandingPage = () => {
               </h1>
               <p className="text-lg text-emerald-100 mb-8">SentraCare adalah klinik kesehatan terpadu yang menyediakan layanan medis komprehensif dengan standar tinggi dan perhatian personal untuk setiap pasien.</p>
               <div className="flex flex-wrap gap-4">
-                <Link href="/semua-janji" className="px-6 py-3 bg-white text-emerald-600 hover:bg-emerald-50 rounded-lg font-semibold transition-colors flex items-center">
+                <Link href="/auth/login" className="px-6 py-3 bg-white text-emerald-600 hover:bg-emerald-50 rounded-lg font-semibold transition-colors flex items-center">
                   Buat Janji Konsultasi
                   <ArrowRightIcon />
                 </Link>
@@ -287,7 +287,7 @@ const SentraCareLandingPage = () => {
             </div>
 
             <div className="mt-8">
-              <Link href="/semua-janji" className="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors">
+              <Link href="/auth/login" className="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors">
                 Buat Janji Sekarang
                 <ArrowRightIcon />
               </Link>
@@ -325,7 +325,7 @@ const SentraCareLandingPage = () => {
           <h2 className="text-3xl font-bold mb-6">Siap Menjaga Kesehatan Anda?</h2>
           <p className="text-lg text-emerald-100 mb-8">Jadwalkan konsultasi dengan dokter spesialis kami hari ini dan dapatkan pelayanan kesehatan terbaik untuk Anda dan keluarga.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/semua-janji" className="px-8 py-3 bg-white text-emerald-600 hover:bg-emerald-50 rounded-lg font-semibold transition-colors">
+            <Link href="/auth/login" className="px-8 py-3 bg-white text-emerald-600 hover:bg-emerald-50 rounded-lg font-semibold transition-colors">
               Buat Janji Online
             </Link>
             <a href="#kontak" className="px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg font-semibold transition-colors">

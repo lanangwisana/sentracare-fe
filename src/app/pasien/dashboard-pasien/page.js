@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [latestWeight, setLatestWeight] = useState("0");
 
+  const API_BASE = "http://localhost:8088";
   // Fetch Medical Records (Patient Service - GraphQL Port 8004)
   const fetchMedicalRecords = (email, token) => {
     const query = `
@@ -50,7 +51,9 @@ export default function DashboardPage() {
         }
       }
     `;
-
+    {
+      /*${API_BASE}/patients/graphql*/
+    }
     fetch("http://localhost:8004/graphql", {
       method: "POST",
       headers: {
@@ -226,7 +229,9 @@ export default function DashboardPage() {
               </Link>
               <NavItem onClick={() => router.push("/pasien")} icon="📋" label="Hasil Tes" />
               <NavItem icon="🏥" label="Layanan" />
-              <NavItem icon="👤" label="Profil" />
+              <Link href="/pasien/profile">
+                <NavItem icon="👤" label="Profil" />
+              </Link>
             </div>
           </nav>
 
@@ -351,7 +356,10 @@ export default function DashboardPage() {
                 <h1 className="text-3xl font-bold mb-4">Pemeriksaan Kesehatan Mudah & Terpercaya</h1>
                 <p className="text-teal-100 mb-6 max-w-2xl">SentraCare membantu Anda melakukan pemesanan medical check-up dan layanan kesehatan digital tanpa antre dengan hasil yang cepat dan akurat.</p>
                 <div className="flex flex-wrap gap-4">
-                  <button className="bg-white text-teal-700 hover:bg-gray-100 font-bold px-6 py-3 rounded-xl transition duration-200 flex items-center space-x-2">
+                  <button
+                    onClick={() => router.push("/pasien/booking")} // <--- TAMBAHKAN INI
+                    className="bg-white text-teal-700 hover:bg-gray-100 font-bold px-6 py-3 rounded-xl transition duration-200 flex items-center space-x-2"
+                  >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
@@ -375,10 +383,10 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <ServiceCard title="Booking Tes Darah" icon="🧪" description="Pemeriksaan darah lengkap untuk mengetahui kondisi kesehatan Anda" bgColor="bg-red-50" iconColor="text-red-600" />
-              <ServiceCard title="Booking Medical Check-Up" icon="🩺" description="Pemeriksaan kesehatan menyeluruh untuk deteksi dini penyakit" bgColor="bg-blue-50" iconColor="text-blue-600" />
-              <ServiceCard title="Booking Vaksinasi" icon="💉" description="Vaksinasi untuk pencegahan penyakit sesuai kebutuhan Anda" bgColor="bg-green-50" iconColor="text-green-600" />
-            </div>
+              <ServiceCard title="Booking Lab Test" icon="🧪" description="Pemeriksaan darah lengkap untuk mengetahui kondisi kesehatan Anda" bgColor="bg-red-50" iconColor="text-red-600" serviceType="LAB_TES" />
+              <ServiceCard title="Booking Medical Check-Up" icon="🩺" description="Pemeriksaan kesehatan menyeluruh untuk deteksi dini penyakit" bgColor="bg-blue-50" iconColor="text-blue-600" serviceType="MEDICAL_CHECKUP" />
+              <ServiceCard title="Booking Vaksinasi" icon="💉" description="Vaksinasi untuk pencegahan penyakit sesuai kebutuhan Anda" bgColor="bg-green-50" iconColor="text-green-600" serviceType="VAKSINASI" />
+            </div>{" "}
           </section>
 
           {/* Recent Activity & Upcoming Appointments */}
@@ -537,9 +545,10 @@ function NavItem({ icon, label, active = false }) {
   );
 }
 
-function ServiceCard({ title, icon, description, bgColor, iconColor }) {
+function ServiceCard({ title, icon, description, bgColor, iconColor, serviceType }) {
+  const router = useRouter();
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition duration-300 cursor-pointer group">
+    <div onClick={() => router.push(`/pasien/booking?service=${serviceType}`)} className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition duration-300 cursor-pointer group">
       <div className={`${bgColor} w-16 h-16 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition duration-300`}>
         <span className={`text-3xl ${iconColor}`}>{icon}</span>
       </div>

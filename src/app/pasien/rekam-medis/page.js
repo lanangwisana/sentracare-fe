@@ -1,8 +1,10 @@
 // app/semua-rekam-medis/page.js
+"use client";
 import React from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-// Icon components defined outside the main component
+// Icon components
 const CalendarIcon = () => (
   <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -67,124 +69,183 @@ const DetailIcon = () => (
   </svg>
 );
 
+const StatusBadge = ({ status }) => {
+  const styles = status === "selesai" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-amber-100 text-amber-800 border-amber-200";
+  const label = status === "selesai" ? "Selesai" : "Dalam Proses";
+  return <span className={`px-3 py-1 rounded-full text-xs font-medium border ${styles}`}>{label}</span>;
+};
+
+const RekamMedisCard = ({ rekam, status }) => {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2 rounded-lg ${status === "selesai" ? "bg-emerald-50 border border-emerald-100" : "bg-amber-50 border border-amber-100"}`}>
+            <MedicalIcon />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{rekam.visitType || rekam.jenis || "Pemeriksaan"}</h3>
+            <p className="text-sm text-gray-600">{rekam.patientName || rekam.pasien || "-"}</p>
+          </div>
+        </div>
+        <StatusBadge status={status} />
+      </div>
+
+      <div className="mb-4">
+        <p className="text-gray-700 font-medium mb-2">Diagnosa:</p>
+        <p className="text-gray-600 italic">{rekam.diagnosis || rekam.diagnosa || "-"}</p>
+      </div>
+
+      {rekam.notes || rekam.catatan ? <p className="text-gray-700 mb-4 text-sm">{rekam.notes || rekam.catatan}</p> : null}
+
+      <div className="space-y-3 text-sm text-gray-500">
+        <div className="flex items-center">
+          <CalendarIcon />
+          <span>{rekam.visitDate || rekam.tanggal || "-"}</span>
+        </div>
+        <div className="flex items-center">
+          <UserIcon />
+          <span>{rekam.doctorName || rekam.dokter || "-"}</span>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        {rekam.detailTersedia || rekam.id ? (
+          <Link href={`/rekam-medis/${rekam.id}`}>
+            <button className="w-full px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-medium transition-colors flex items-center justify-center">
+              <DetailIcon />
+              Lihat detail rekam medis
+            </button>
+          </Link>
+        ) : (
+          <button className="w-full px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium cursor-not-allowed">Detail belum tersedia</button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const PrescriptionItem = ({ p }) => {
+  return (
+    <div className="flex items-start justify-between border rounded-lg p-4 bg-white">
+      <div>
+        <p className="text-sm text-gray-500">Nomor Resep</p>
+        <p className="font-medium text-gray-900">{p.prescriptionNumber}</p>
+        <p className="mt-2 text-sm text-gray-700">
+          <span className="font-medium">Dokter:</span> {p.doctorName}
+        </p>
+        <p className="mt-1 text-sm text-gray-700">
+          <span className="font-medium">Tanggal:</span> {new Date(p.createdAt).toLocaleDateString()}
+        </p>
+        <p className="mt-2 text-sm text-gray-700">
+          <span className="font-medium">Instruksi:</span> {p.instructions || "-"}
+        </p>
+        {Array.isArray(p.medicines) && p.medicines.length > 0 ? (
+          <ul className="mt-2 list-disc list-inside text-sm text-gray-700">
+            {p.medicines.map((m, idx) => (
+              <li key={idx}>{typeof m === "string" ? m : m.name ? `${m.name} (${m.dosage || ""}, ${m.frequency || ""}, ${m.duration || ""})` : JSON.stringify(m)}</li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+      <Link href={`/resep/${p.id}`} className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium">
+        Lihat detail resep
+      </Link>
+    </div>
+  );
+};
+
 const SemuaRekamMedisPage = () => {
-  // Data rekam medis (contoh)
-  const semuaRekamMedis = [
-    {
-      id: 1,
-      jenis: "TES_URINE",
-      tanggal: "13/05/1994",
-      diagnosa: "Minus natus sed prae",
-      status: "selesai",
-      pasien: "Pasien001",
-      dokter: "Dr. Andi Wijaya",
-      catatan: "Hasil pemeriksaan urine menunjukkan kondisi normal",
-      detailTersedia: true,
-    },
-    {
-      id: 2,
-      jenis: "TES_DARAH",
-      tanggal: "15/06/2024",
-      diagnosa: "Hipertensi grade 1",
-      status: "selesai",
-      pasien: "Pasien002",
-      dokter: "Dr. Sari Dewi",
-      catatan: "Kadar gula darah 120 mg/dL, tekanan darah 140/90",
-      detailTersedia: true,
-    },
-    {
-      id: 3,
-      jenis: "RONTGEN_THORAX",
-      tanggal: "22/07/2024",
-      diagnosa: "Bronchitis akut",
-      status: "selesai",
-      pasien: "Pasien003",
-      dokter: "Dr. Budi Santoso",
-      catatan: "Terdapat infiltrat pada paru kanan bawah",
-      detailTersedia: true,
-    },
-    {
-      id: 4,
-      jenis: "EKG",
-      tanggal: "05/08/2024",
-      diagnosa: "Sinus tachycardia",
-      status: "proses",
-      pasien: "Pasien001",
-      dokter: "Dr. Andi Wijaya",
-      catatan: "Denyut jantung 110 bpm, irama sinus reguler",
-      detailTersedia: false,
-    },
-    {
-      id: 5,
-      jenis: "USG_ABDOMEN",
-      tanggal: "18/09/2024",
-      diagnosa: "Hepatitis A",
-      status: "selesai",
-      pasien: "Pasien004",
-      dokter: "Dr. Rina Melati",
-      catatan: "Pembesaran hati ringan, echotexture homogen",
-      detailTersedia: true,
-    },
-    {
-      id: 6,
-      jenis: "MRI_OTAK",
-      tanggal: "30/10/2024",
-      diagnosa: "Migraine kronis",
-      status: "selesai",
-      pasien: "Pasien005",
-      dokter: "Dr. Ahmad Fauzi",
-      catatan: "Tidak ditemukan kelainan struktural",
-      detailTersedia: true,
-    },
-    {
-      id: 7,
-      jenis: "CT_SCAN",
-      tanggal: "12/11/2024",
-      diagnosa: "Appendicitis akut",
-      status: "selesai",
-      pasien: "Pasien006",
-      dokter: "Dr. Linda Sari",
-      catatan: "Perlu tindakan operasi segera",
-      detailTersedia: true,
-    },
-    {
-      id: 8,
-      jenis: "TES_ALERGI",
-      tanggal: "25/12/2024",
-      diagnosa: "Alergi debu dan tungau",
-      status: "proses",
-      pasien: "Pasien007",
-      dokter: "Dr. Hendra Gunawan",
-      catatan: "Hasil skin test positif untuk alergen tertentu",
-      detailTersedia: false,
-    },
-    {
-      id: 9,
-      jenis: "PANEL_TIROID",
-      tanggal: "10/01/2025",
-      diagnosa: "Hipotiroid subklinis",
-      status: "selesai",
-      pasien: "Pasien008",
-      dokter: "Dr. Maya Indah",
-      catatan: "TSH meningkat, T3 dan T4 normal",
-      detailTersedia: true,
-    },
-    {
-      id: 10,
-      jenis: "TES_FUNGSI_HATI",
-      tanggal: "28/02/2025",
-      diagnosa: "Fatty liver ringan",
-      status: "selesai",
-      pasien: "Pasien009",
-      dokter: "Dr. Yoga Pratama",
-      catatan: "Enzim hati sedikit meningkat",
-      detailTersedia: true,
-    },
-  ];
+  const [records, setRecords] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [latestWeight, setLatestWeight] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const email = typeof window !== "undefined" ? localStorage.getItem("username") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const graphqlURL = "http://localhost:8004/graphql";
+  const query = `
+    query GetPatientRecords($email: String!) {
+      patientByEmail(email: $email) {
+        records {
+          id
+          visitDate
+          visitType
+          diagnosis
+          vitalSigns {
+            weight
+          }
+        }
+        prescriptions {
+          id
+          recordId
+          prescriptionNumber
+          doctorName
+          medicines
+          instructions
+          createdAt
+        }
+      }
+    }
+  `;
+  useEffect(() => {
+    if (!email || !token || !graphqlURL) {
+      setError("Kredensial atau konfigurasi tidak lengkap. Pastikan email, token, dan NEXT_PUBLIC_GRAPHQL_URL tersedia.");
+      setLoading(false);
+      return;
+    }
+
+    const fetchMedicalRecords = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await fetch(graphqlURL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            query,
+            variables: { email },
+          }),
+        });
+
+        const result = await res.json();
+        if (result.errors) {
+          throw new Error(result.errors?.[0]?.message || "Gagal memuat data GraphQL");
+        }
+
+        const payload = result.data?.patientByEmail;
+        const fetchedRecords = payload?.records || [];
+        const fetchedPrescriptions = payload?.prescriptions || [];
+
+        // Sort records by date desc (assuming ISO string)
+        const sortedRecords = [...fetchedRecords].sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate));
+
+        setRecords(sortedRecords);
+        setPrescriptions(fetchedPrescriptions);
+
+        if (sortedRecords.length > 0 && sortedRecords[0]?.vitalSigns?.weight) {
+          setLatestWeight(sortedRecords[0].vitalSigns.weight);
+        } else {
+          setLatestWeight(null);
+        }
+      } catch (err) {
+        setError(err.message || "Terjadi kesalahan memuat data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMedicalRecords();
+  }, [email, token, graphqlURL]);
 
   // Filter berdasarkan status
-  const rekamSelesai = semuaRekamMedis.filter((r) => r.status === "selesai");
-  const rekamProses = semuaRekamMedis.filter((r) => r.status === "proses");
+  const rekamSelesai = useMemo(() => records.filter((r) => (r.status || "").toLowerCase() === "selesai"), [records]);
+  const rekamProses = useMemo(() => records.filter((r) => (r.status || "").toLowerCase() !== "selesai"), [records]);
 
   return (
     <div className="min-h-screen bg-emerald-50">
@@ -211,7 +272,7 @@ const SemuaRekamMedisPage = () => {
                 </div>
                 <div>
                   <p className="text-sm opacity-90">Total Rekam Medis</p>
-                  <p className="text-xl font-bold">{semuaRekamMedis.length}</p>
+                  <p className="text-xl font-bold">{records.length}</p>
                 </div>
               </div>
             </div>
@@ -243,151 +304,118 @@ const SemuaRekamMedisPage = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Ringkasan Statistik */}
-        <div className="mb-10 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Ringkasan Rekam Medis</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 border border-gray-200 rounded-xl">
-              <p className="text-2xl font-bold text-emerald-600">{semuaRekamMedis.length}</p>
-              <p className="text-sm text-gray-600">Total Rekam Medis</p>
-            </div>
-            <div className="text-center p-4 border border-gray-200 rounded-xl">
-              <p className="text-2xl font-bold text-emerald-600">{rekamSelesai.length}</p>
-              <p className="text-sm text-gray-600">Selesai</p>
-            </div>
-            <div className="text-center p-4 border border-gray-200 rounded-xl">
-              <p className="text-2xl font-bold text-amber-600">{rekamProses.length}</p>
-              <p className="text-sm text-gray-600">Dalam Proses</p>
-            </div>
-            <div className="text-center p-4 border border-gray-200 rounded-xl">
-              <p className="text-2xl font-bold text-emerald-600">{semuaRekamMedis.filter((r) => r.detailTersedia).length}</p>
-              <p className="text-sm text-gray-600">Detail Tersedia</p>
-            </div>
+        {/* Loading & Error */}
+        {loading && (
+          <div className="mb-6 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <p className="text-gray-700">Memuat rekam medis dan resep...</p>
           </div>
-        </div>
+        )}
+        {error && (
+          <div className="mb-6 bg-red-50 rounded-2xl shadow-sm border border-red-200 p-6">
+            <p className="text-red-700 font-medium">Kesalahan: {error}</p>
+            <p className="text-red-600 text-sm mt-1">Periksa koneksi, token, dan konfigurasi GraphQL URL.</p>
+          </div>
+        )}
 
-        {/* Semua Rekam Medis */}
-        <div className="space-y-8">
-          {/* Rekam Medis Selesai */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-lg bg-emerald-100">
-                  <FileIcon />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Rekam Medis Selesai</h2>
-                  <p className="text-sm text-gray-600">{rekamSelesai.length} rekam medis</p>
-                </div>
+        {/* Ringkasan Statistik */}
+        {!loading && !error && (
+          <div className="mb-10 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Ringkasan Rekam Medis</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 border border-gray-200 rounded-xl">
+                <p className="text-2xl font-bold text-emerald-600">{records.length}</p>
+                <p className="text-sm text-gray-600">Total Rekam Medis</p>
+              </div>
+              <div className="text-center p-4 border border-gray-200 rounded-xl">
+                <p className="text-2xl font-bold text-emerald-600">{rekamSelesai.length}</p>
+                <p className="text-sm text-gray-600">Selesai</p>
+              </div>
+              <div className="text-center p-4 border border-gray-200 rounded-xl">
+                <p className="text-2xl font-bold text-amber-600">{rekamProses.length}</p>
+                <p className="text-sm text-gray-600">Dalam Proses</p>
+              </div>
+              <div className="text-center p-4 border border-gray-200 rounded-xl">
+                <p className="text-2xl font-bold text-emerald-600">{typeof latestWeight === "number" ? `${latestWeight} kg` : "-"}</p>
+                <p className="text-sm text-gray-600">Berat Badan Terbaru</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {rekamSelesai.map((rekam) => (
-                <div key={rekam.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                        <MedicalIcon />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{rekam.jenis}</h3>
-                        <p className="text-sm text-gray-600">{rekam.pasien}</p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium border bg-emerald-100 text-emerald-800 border-emerald-200">Selesai</span>
+          </div>
+        )}
+
+        {/* Semua Rekam Medis */}
+        {!loading && !error && (
+          <div className="space-y-8">
+            {/* Rekam Medis Selesai */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-emerald-100">
+                    <FileIcon />
                   </div>
-
-                  <div className="mb-4">
-                    <p className="text-gray-700 font-medium mb-2">Diagnosa:</p>
-                    <p className="text-gray-600 italic">{rekam.diagnosa}</p>
-                  </div>
-
-                  <p className="text-gray-700 mb-4 text-sm">{rekam.catatan}</p>
-
-                  <div className="space-y-3 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <CalendarIcon />
-                      <span>{rekam.tanggal}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <UserIcon />
-                      <span>{rekam.dokter}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    {rekam.detailTersedia ? (
-                      <button className="w-full px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-medium transition-colors flex items-center justify-center">
-                        <DetailIcon />
-                        TERSEDIA DETAIL
-                      </button>
-                    ) : (
-                      <button className="w-full px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium cursor-not-allowed">Detail Belum Tersedia</button>
-                    )}
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Rekam Medis Selesai</h2>
+                    <p className="text-sm text-gray-600">{rekamSelesai.length} rekam medis</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
+              </div>
+              {rekamSelesai.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-gray-600">Belum ada rekam medis yang selesai.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {rekamSelesai.map((rekam) => (
+                    <RekamMedisCard key={rekam.id} rekam={rekam} status="selesai" />
+                  ))}
+                </div>
+              )}
+            </section>
 
-          {/* Rekam Medis Dalam Proses */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-lg bg-amber-100">
+            {/* Rekam Medis Dalam Proses */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-amber-100">
+                    <DocumentIcon />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Dalam Proses</h2>
+                    <p className="text-sm text-gray-600">{rekamProses.length} rekam medis</p>
+                  </div>
+                </div>
+              </div>
+              {rekamProses.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-gray-600">Tidak ada rekam medis dalam proses.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {rekamProses.map((rekam) => (
+                    <RekamMedisCard key={rekam.id} rekam={rekam} status="proses" />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Prescriptions */}
+            <section>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 rounded-lg bg-emerald-100">
                   <DocumentIcon />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Dalam Proses</h2>
-                  <p className="text-sm text-gray-600">{rekamProses.length} rekam medis</p>
+                  <h2 className="text-xl font-bold text-gray-900">Daftar Resep</h2>
+                  <p className="text-sm text-gray-600">{prescriptions.length} resep</p>
                 </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {rekamProses.map((rekam) => (
-                <div key={rekam.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-100">
-                        <MedicalIcon />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{rekam.jenis}</h3>
-                        <p className="text-sm text-gray-600">{rekam.pasien}</p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium border bg-amber-100 text-amber-800 border-amber-200">Dalam Proses</span>
-                  </div>
-
-                  <div className="mb-4">
-                    <p className="text-gray-700 font-medium mb-2">Diagnosa Sementara:</p>
-                    <p className="text-gray-600 italic">{rekam.diagnosa}</p>
-                  </div>
-
-                  <p className="text-gray-700 mb-4 text-sm">{rekam.catatan}</p>
-
-                  <div className="space-y-3 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <CalendarIcon />
-                      <span>{rekam.tanggal}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <UserIcon />
-                      <span>{rekam.dokter}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Status:</span>
-                      <span className="text-sm font-medium text-amber-600">Menunggu Hasil</span>
-                    </div>
-                  </div>
+              {prescriptions.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-gray-600">Belum ada resep.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
+                  {prescriptions.map((p) => (
+                    <PrescriptionItem key={p.id} p={p} />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
-        </div>
+              )}
+            </section>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="mt-12 pt-8 border-t border-gray-200">
@@ -395,9 +423,9 @@ const SemuaRekamMedisPage = () => {
             <div className="text-gray-600 text-sm">
               <p className="flex items-center">
                 <CheckIcon />
-                Terakhir diperbarui: 27/12/2025
+                Terakhir diperbarui: {new Date().toLocaleDateString()}
               </p>
-              <p className="mt-1">Total {semuaRekamMedis.length} rekam medis ditemukan</p>
+              <p className="mt-1">Total {records.length} rekam medis ditemukan</p>
             </div>
             <Link href="/pasien/dashboard-pasien" className="mt-4 md:mt-0 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors flex items-center">
               <BackIcon />

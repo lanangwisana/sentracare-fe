@@ -86,7 +86,8 @@ const Icons = {
     </svg>
   ),
   Trash2: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
+    // PERBAIKAN: Menghapus class text-emerald-600 agar mengikuti warna parent (text-red-500)
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
       <path
         fillRule="evenodd"
         d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
@@ -230,7 +231,7 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-
+  const API_BASE = "http://localhost:8088";
   // Data form rekam medis
   const [medicalRecord, setMedicalRecord] = useState({
     visitDate: new Date().toISOString().split("T")[0],
@@ -267,8 +268,9 @@ export default function DoctorDashboard() {
         router.push("/auth/login");
         return;
       }
-
-      const res = await fetch("http://localhost:8004/patients", {
+      // http://localhost:8004/patients
+      // ${API_BASE}/patients/patients-list
+      const res = await fetch(`${API_BASE}/patients/patients-list`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -294,7 +296,8 @@ export default function DoctorDashboard() {
         age: p.age || 0,
         gender: p.gender,
         medicalRecordNumber: p.booking_id ? `RM-${p.booking_id}` : `ID-${p.id}`,
-        status: p.records && p.records.length > 0 ? "control" : "new",
+        // LOGIKA PERBAIKAN: Mapping status sesuai data Database
+        status: p.status === "Complete" ? "complete" : p.records && p.records.length > 0 ? "control" : "new",
       }));
       setPatients(mappedData);
     } catch (err) {
@@ -382,6 +385,7 @@ export default function DoctorDashboard() {
   };
 
   const removeMedicine = (id) => {
+    // PERBAIKAN: Fungsi hapus obat berdasarkan ID unik
     if (prescription.medicines.length > 1) {
       setPrescription((prev) => ({
         ...prev,
@@ -415,6 +419,7 @@ export default function DoctorDashboard() {
         router.push("/auth/login");
         return;
       }
+      const currentStatus = medicalRecord.followUpDate === null ? "Complete" : "Control";
 
       const payload = {
         patient_id: selectedPatient.id,
@@ -423,6 +428,7 @@ export default function DoctorDashboard() {
         visit_type: selectedPatient.tipe_layanan,
         diagnosis: medicalRecord.diagnosis,
         treatment: medicalRecord.treatment,
+        status: currentStatus, // Kirim status ke Backend
         vital_signs: {
           blood_pressure: medicalRecord.bloodPressure,
           temperature: medicalRecord.temperature,
@@ -432,8 +438,9 @@ export default function DoctorDashboard() {
         },
         extended_data: dynamicFields,
       };
-
-      const res = await fetch("http://localhost:8004/records", {
+      // http://localhost:8004/records
+      // ${API_BASE}/patients/records
+      const res = await fetch(`${API_BASE}/patients/records`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -484,8 +491,9 @@ export default function DoctorDashboard() {
         instructions: prescription.instructions,
         prescription_number: prescriptionNumber,
       };
-
-      const res = await fetch("http://localhost:8004/prescriptions", {
+      // http://localhost:8004/prescriptions
+      // ${API_BASE}/patients/prescriptions
+      const res = await fetch(`${API_BASE}/patients/prescriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -751,8 +759,13 @@ export default function DoctorDashboard() {
                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{patient.tipe_layanan || "General"}</span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "new" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
-                                    {patient.status === "new" ? "New" : "Control"}
+                                  {/* PERBAIKAN: UI Badge untuk status Complete biru */}
+                                  <span
+                                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                      patient.status === "new" ? "bg-green-100 text-green-800" : patient.status === "complete" ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800"
+                                    }`}
+                                  >
+                                    {patient.status === "new" ? "New" : patient.status === "complete" ? "Complete" : "Control"}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

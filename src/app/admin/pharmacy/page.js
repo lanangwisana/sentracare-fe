@@ -6,6 +6,7 @@ import Link from "next/link";
 
 export default function PharmacyPage() {
   const router = useRouter();
+  const [editId, setEditId] = useState(null);
   const [obatList, setObatList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("inventory");
@@ -18,7 +19,7 @@ export default function PharmacyPage() {
     description: "",
     category: "",
   });
-
+  const API_BASE = "http://localhost:8088";
   // Ambil role dari localStorage setelah client render
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -38,7 +39,9 @@ export default function PharmacyPage() {
 
   const fetchObat = async () => {
     try {
-      const response = await fetch(`http://localhost:8003/graphql`, {
+      // http://localhost:8003/graphql
+      // ${API_BASE}/pharmacy/graphql
+      const response = await fetch(`${API_BASE}/pharmacy/graphql`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -77,6 +80,7 @@ export default function PharmacyPage() {
   };
   useEffect(() => {
     fetchObat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle add new obat
@@ -89,15 +93,25 @@ export default function PharmacyPage() {
     };
 
     try {
-      const response = await fetch(`http://localhost:8003/pharmacy/obat`, {
-        method: "POST",
+      // Tentukan URL dan Method berdasarkan mode (Add atau Edit)
+      // http://localhost:8003/pharmacy/obat/${editId}
+      // ${API_BASE}/pharmacy/obat/${editId}
+      // http://localhost:8003/pharmacy/obat
+      // ${API_BASE}/pharmacy/obat
+      const url = editId ? `${API_BASE}/pharmacy/obat/${editId}` : `${API_BASE}/pharmacy/obat`;
+      const method = editId ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        alert("✅ Obat berhasil ditambahkan!");
+        alert(editId ? "✅ Obat berhasil diperbarui!" : "✅ Obat berhasil ditambahkan!");
+        // Reset form dan state
         setNewObat({ name: "", sku: "", stock: "", price: "", description: "", category: "" });
+        setEditId(null);
         fetchObat();
         setActiveTab("inventory");
       } else {
@@ -112,7 +126,9 @@ export default function PharmacyPage() {
   // Handle update stock
   const handleUpdateStock = async (id, newStock) => {
     try {
-      const response = await fetch(`http://localhost:8003/pharmacy/obat/${id}/stock`, {
+      // http://localhost:8003/pharmacy/obat/${id}/stock
+      // ${API_BASE}/pharmacy/obat/${id}/stock
+      const response = await fetch(`${API_BASE}/pharmacy/obat/${id}/stock`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ stock: newStock }),
@@ -133,7 +149,9 @@ export default function PharmacyPage() {
   // Handle delete obat
   const handleDeleteObat = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8003/pharmacy/obat/${id}`, {
+      // http://localhost:8003/pharmacy/obat/${id}
+      // ${API_BASE}/pharmacy/obat/${id}
+      const response = await fetch(`${API_BASE}/pharmacy/obat/${id}`, {
         method: "DELETE",
         headers: { ...getAuthHeaders() },
       });
@@ -434,6 +452,7 @@ export default function PharmacyPage() {
                                 className="text-teal-600 hover:text-teal-800 text-sm font-medium hover:bg-teal-50 px-3 py-1.5 rounded transition"
                                 onClick={() => {
                                   setActiveTab("tambah");
+                                  setEditId(item.id); // <--- Simpan ID yang akan diedit
                                   setNewObat({
                                     name: item.name,
                                     sku: item.sku,

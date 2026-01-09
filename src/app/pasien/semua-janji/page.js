@@ -51,7 +51,7 @@ const BackIcon = () => (
 
 const SemuaJanjiPage = () => {
   const [semuaJanji, setSemuaJanji] = useState([]);
-
+  const API_BASE = "http://localhost:8088";
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -69,8 +69,9 @@ const SemuaJanjiPage = () => {
         }
       }
     `;
-
-    fetch("http://localhost:8001/graphql", {
+    // URL bukan dari api gateway http://localhost:8001/graphql
+    // URL dari api gateway ${API_BASE}/booking/graphql
+    fetch(`${API_BASE}/booking/graphql`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

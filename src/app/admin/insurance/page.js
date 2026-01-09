@@ -26,13 +26,14 @@ export default function InsurancePage() {
 
   // URL Backend Insurance
   const API_URL = "http://localhost:8005";
+  const API_BASE = "http://localhost:8088";
 
   // 1. Fetch Data Klaim
   const fetchClaims = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const response = await fetch(`${API_URL}/insurance/claims`);
+      const response = await fetch(`${API_BASE}/insurance/claims`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -71,7 +72,7 @@ export default function InsurancePage() {
         total_bill: parseFloat(formData.total_bill) || 0,
       };
 
-      const response = await fetch(`${API_URL}/insurance/claims`, {
+      const response = await fetch(`${API_BASE}/insurance/claims`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -20,7 +20,7 @@ export default function PatientEMRPage() {
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
-
+  const API_BASE = "http://localhost:8088";
   // --- 1. FUNGSI LOAD DATA (Sinkron ke Port 8004) ---
   const fetchAllPatients = useCallback(async () => {
     try {
@@ -33,8 +33,9 @@ export default function PatientEMRPage() {
         router.push("/auth/login");
         return;
       }
-
-      const res = await fetch("http://localhost:8004/patients", {
+      // ${API_BASE}//patients/patients-list
+      // http://localhost:8004/patients
+      const res = await fetch(`${API_BASE}/patients/patients-list`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -76,8 +77,9 @@ export default function PatientEMRPage() {
         router.push("/auth/login");
         return;
       }
-
-      const res = await fetch("http://localhost:8004/patients/sync-from-booking", {
+      // http://localhost:8004/patients/sync-from-booking
+      // ${API_BASE}/patients/sync-from-booking
+      const res = await fetch(`${API_BASE}/patients/sync-from-booking`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -25,7 +25,8 @@ export default function DashboardPage() {
   const [latestWeight, setLatestWeight] = useState("0");
 
   const API_BASE = "http://localhost:8088";
-  // Fetch Medical Records (Patient Service - GraphQL Port 8004)
+
+  // Fetch Medical Records
   const fetchMedicalRecords = (email, token) => {
     const query = `
       query GetPatientRecords($email: String!) {
@@ -51,10 +52,9 @@ export default function DashboardPage() {
         }
       }
     `;
-    {
-      /*${API_BASE}/patients/graphql*/
-    }
-    fetch("http://localhost:8004/graphql", {
+    // URL bukan dari api gateway http://localhost:8004/graphql
+    // URL dari api gateway ${API_BASE}/patients/graphql
+    fetch(`${API_BASE}/patients/graphql`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -83,13 +83,16 @@ export default function DashboardPage() {
       .catch((err) => console.error("Error fetching medical records:", err));
   };
 
+  // Cek Autentikasi & Ambil Data User
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/auth/login");
       return;
     }
-    fetch("http://localhost:8002/auth/me", {
+    // URL bukan dari api gateway http://localhost:8002/auth/me
+    // URL dari api gateway ${API_BASE}/auth/me
+    fetch(`${API_BASE}/auth/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -110,6 +113,7 @@ export default function DashboardPage() {
       .catch((err) => console.error("Error fetching user data:", err));
   }, [router]);
 
+  // Fetch Booking List dengan Auth Check
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -129,9 +133,9 @@ export default function DashboardPage() {
       }
     }
   `;
-
-    console.log("Token JWT:", token);
-    fetch("http://127.0.0.1:8001/graphql", {
+    //URL bukan dari api gateway http://127.0.0.1:8001/graphql
+    //URL dari api gateway ${API_BASE}/booking/graphql
+    fetch(`${API_BASE}/booking/graphql`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -155,39 +159,40 @@ export default function DashboardPage() {
   }, [router]);
 
   // 3. Fetch Booking List (Booking Service - GraphQL Port 8001)
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  // useEffect(() => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) return;
 
-    const query = `
-      query {
-        bookings {
-          id
-          namaLengkap
-          jenisLayanan
-          tanggalPemeriksaan
-          jamPemeriksaan
-          status
-        }
-      }
-    `;
-
-    fetch("http://localhost:8001/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query }),
-    })
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.data && result.data.bookings) {
-          setBookings(result.data.bookings);
-        }
-      })
-      .catch((err) => console.error("Error fetching bookings:", err));
-  }, []);
+  //   const query = `
+  //     query {
+  //       bookings {
+  //         id
+  //         namaLengkap
+  //         jenisLayanan
+  //         tanggalPemeriksaan
+  //         jamPemeriksaan
+  //         status
+  //       }
+  //     }
+  //   `;
+  //   // URL bukan dari api gateway http://localhost:8001/graphql
+  //   // URL dari api gateway ${API_BASE}/booking/graphql
+  //   fetch(`${API_BASE}/booking/graphql`, {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //       Authorization: `Bearer ${token}`,
+  //     },
+  //     body: JSON.stringify({ query }),
+  //   })
+  //     .then((res) => res.json())
+  //     .then((result) => {
+  //       if (result.data && result.data.bookings) {
+  //         setBookings(result.data.bookings);
+  //       }
+  //     })
+  //     .catch((err) => console.error("Error fetching bookings:", err));
+  // }, []);
 
   return (
     <>

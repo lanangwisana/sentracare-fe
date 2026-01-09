@@ -19,6 +19,19 @@ export default function ViewAllBookings() {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [viewMode, setViewMode] = useState("table"); // 'table' or 'card'
+  const API_BASE = "http://localhost:8088";
+  // Tombol Confirm disable kalau status sudah CONFIRMED atau CANCELLED
+  const isConfirmDisabled = (status) => {
+    if (!status) return false;
+    const s = status.trim().toUpperCase();
+    return s === "CONFIRMED" || s === "CANCELLED";
+  };
+
+  const isCancelDisabled = (status) => {
+    if (!status) return false;
+    const s = status.trim().toUpperCase();
+    return s === "CONFIRMED" || s === "CANCELLED";
+  };
 
   const getStatusColor = (status) => {
     if (!status) return "bg-gray-100 text-gray-800";
@@ -96,8 +109,9 @@ export default function ViewAllBookings() {
         setLoading(false);
         return;
       }
-
-      const res = await fetch("http://localhost:8001/graphql", {
+      // http://localhost:8001/graphql
+      // ${API_BASE}/booking/graphql
+      const res = await fetch(`${API_BASE}/booking/graphql`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +141,9 @@ export default function ViewAllBookings() {
   const fetchDoctors = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8002/auth/admin/users", {
+      // http://localhost:8002/auth/admin/users
+      // ${API_BASE}/auth/admin/users
+      const res = await fetch(`${API_BASE}/auth/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -146,6 +162,7 @@ export default function ViewAllBookings() {
   useEffect(() => {
     fetchBookings();
     fetchDoctors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateStatus = async (id, status) => {
@@ -169,8 +186,9 @@ export default function ViewAllBookings() {
         bodyPayload.doctor_name = selectedDoctor.name;
         bodyPayload.doctor_email = selectedDoctor.email;
       }
-
-      const res = await fetch(`http://localhost:8001/booking/${id}/status`, {
+      // http://localhost:8001/booking/${id}/status
+      // ${API_BASE}/booking/${id}/status
+      const res = await fetch(`${API_BASE}/booking/${id}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -489,28 +507,21 @@ export default function ViewAllBookings() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => openConfirmModal(b)}
-                            disabled={b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"}
+                            disabled={isConfirmDisabled(b.status)}
                             className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${
-                              b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              isConfirmDisabled(b.status) ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                             }`}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
                             Confirm
                           </button>
+
                           <button
                             onClick={() => openCancelModal(b)}
-                            disabled={b.status === "Cancelled" || b.status === "CANCELLED"}
+                            disabled={isCancelDisabled(b.status)}
                             className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${
-                              b.status === "Cancelled" || b.status === "CANCELLED" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-50 text-red-700 hover:bg-red-100"
+                              isCancelDisabled(b.status) ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-50 text-red-700 hover:bg-red-100"
                             }`}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
                             Cancel
                           </button>
                         </div>
@@ -585,28 +596,19 @@ export default function ViewAllBookings() {
                 <div className="flex gap-2 pt-4 border-t border-gray-100">
                   <button
                     onClick={() => openConfirmModal(b)}
-                    disabled={b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"}
-                    className={`flex-1 py-2 text-sm rounded-xl transition duration-200 flex items-center justify-center gap-1.5 ${
-                      b.status === "Confirmed" || b.status === "CONFIRMED" || b.status === "Cancelled" || b.status === "CANCELLED"
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-linear-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+                    disabled={isConfirmDisabled(b.status)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${
+                      isConfirmDisabled(b.status) ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                     }`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
                     Confirm
                   </button>
+
                   <button
                     onClick={() => openCancelModal(b)}
-                    disabled={b.status === "Cancelled" || b.status === "CANCELLED"}
-                    className={`flex-1 py-2 text-sm rounded-xl transition duration-200 flex items-center justify-center gap-1.5 ${
-                      b.status === "Cancelled" || b.status === "CANCELLED" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-50 text-red-700 hover:bg-red-100"
-                    }`}
+                    disabled={isCancelDisabled(b.status)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition duration-200 flex items-center gap-1.5 ${isCancelDisabled(b.status) ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-50 text-red-700 hover:bg-red-100"}`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
                     Cancel
                   </button>
                 </div>
@@ -722,19 +724,27 @@ export default function ViewAllBookings() {
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Assign Doctor:</label>
                   <select
+                    // Gunakan email sebagai value utama agar unik
                     value={selectedDoctor?.email || ""}
                     onChange={(e) => {
-                      const doctor = doctors.find((d) => d.username === e.target.value);
+                      // Cari dokter berdasarkan email agar sinkron dengan value pilihan
+                      const doctor = doctors.find((d) => d.email === e.target.value);
                       if (doctor) {
-                        setSelectedDoctor({ name: doctor.full_name || doctor.username, email: doctor.email });
+                        setSelectedDoctor({
+                          name: doctor.full_name || doctor.username,
+                          email: doctor.email,
+                        });
+                      } else {
+                        setSelectedDoctor(null);
                       }
                     }}
                     className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition duration-200 appearance-none"
                   >
                     <option value="">-- Select Doctor --</option>
                     {doctors.map((d) => (
-                      <option key={d.id} value={d.username}>
-                        Dr. {d.username}
+                      <option key={d.id} value={d.email}>
+                        {/* Di sini kita tampilkan Full Name, jika kosong baru tampilkan Username */}
+                        Dr. {d.full_name || d.username}
                       </option>
                     ))}
                   </select>

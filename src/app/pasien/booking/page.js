@@ -20,6 +20,7 @@ function BookingFormContent() {
     catatan: "",
   });
 
+  const API_BASE = "http://localhost:8088";
 
   useEffect(() => {
     const service = searchParams.get("service");
@@ -66,7 +67,9 @@ function BookingFormContent() {
         router.push("/auth/login");
         return;
       }
-      const response = await fetch("http://127.0.0.1:8001/booking", {
+      // URL bukan dari api gateway http://127.0.0.1:8001/booking
+      // URL dari api gateway ${API_BASE}/booking
+      const response = await fetch(`${API_BASE}/booking/create-booking`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData),

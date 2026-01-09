@@ -165,6 +165,7 @@ const SemuaRekamMedisPage = () => {
   const email = typeof window !== "undefined" ? localStorage.getItem("username") : null;
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const graphqlURL = "http://localhost:8004/graphql";
+  const API_BASE = "http://localhost:8088";
   const query = `
     query GetPatientRecords($email: String!) {
       patientByEmail(email: $email) {
@@ -201,7 +202,7 @@ const SemuaRekamMedisPage = () => {
         setLoading(true);
         setError("");
 
-        const res = await fetch(graphqlURL, {
+        const res = await fetch(`${API_BASE}/patients/graphql`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -241,7 +242,8 @@ const SemuaRekamMedisPage = () => {
     };
 
     fetchMedicalRecords();
-  }, [email, token, graphqlURL]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, token, `${API_BASE}/patients/graphql`]);
 
   // Filter berdasarkan status
   const rekamSelesai = useMemo(() => records.filter((r) => (r.status || "").toLowerCase() === "selesai"), [records]);

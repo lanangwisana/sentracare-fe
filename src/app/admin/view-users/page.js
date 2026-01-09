@@ -17,16 +17,27 @@ export default function ViewAllUsers() {
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [successMsg, setSuccessMsg] = useState(null);
+
   // State untuk form Add User
   const [newUser, setNewUser] = useState({
     username: "",
     email: "",
     fullName: "",
     phoneNumber: "",
-    role: "Dokter", // Default role
+    role: "Dokter",
     status: "Active",
     password: "",
     confirmPassword: "",
+  });
+
+  // State untuk form Edit User
+  const [editUserForm, setEditUserForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    phoneNumber: "",
+    role: "Dokter",
+    status: "Active",
   });
 
   // State untuk toggle password visibility
@@ -34,6 +45,20 @@ export default function ViewAllUsers() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
+
+  // State untuk edit form
+  const [editFormError, setEditFormError] = useState(null);
+  const [editFormSuccess, setEditFormSuccess] = useState(null);
+  const API_BASE = "http://localhost:8088";
+  // --- LOGIKA TAMBAHAN: HELPER PARSING ERROR ---
+  const getErrorMessage = (errData) => {
+    if (!errData || !errData.detail) return "An unknown error occurred";
+    if (typeof errData.detail === "string") return errData.detail;
+    if (Array.isArray(errData.detail)) {
+      return errData.detail.map((e) => `${e.loc[e.loc.length - 1]}: ${e.msg}`).join(", ");
+    }
+    return JSON.stringify(errData.detail);
+  };
 
   // Function fetch data users dari API
   const fetchUsers = async () => {
@@ -49,7 +74,9 @@ export default function ViewAllUsers() {
       }
 
       // Gunakan endpoint REST dari backend auth service
-      const res = await fetch("http://localhost:8002/auth/admin/users", {
+      // http://localhost:8002/auth/admin/users
+      // ${API_BASE}/auth/admin/users
+      const res = await fetch(`${API_BASE}/auth/admin/users`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -69,7 +96,7 @@ export default function ViewAllUsers() {
           return;
         }
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
+        throw new Error(getErrorMessage(errorData) || `HTTP error! status: ${res.status}`);
       }
 
       const data = await res.json();
@@ -80,8 +107,10 @@ export default function ViewAllUsers() {
         username: user.username,
         email: user.email,
         fullName: user.full_name,
+        phoneNumber: user.phone_number || "",
         role: user.role,
-        status: user.status,
+        // LOGIKA: Normalisasi status agar sinkron dengan dropdown modal
+        status: user.status === "ACTIVE" ? "Active" : user.status === "INACTIVE" ? "Inactive" : user.status,
         lastLogin: formatDate(user.last_login),
         createdAt: formatDate(user.created_at),
         avatarColor: getAvatarColor(user.role),
@@ -96,6 +125,7 @@ export default function ViewAllUsers() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     // Panggil fetchUsers dalam async function
     const loadData = async () => {
@@ -109,6 +139,15 @@ export default function ViewAllUsers() {
   const handleNewUserChange = (e) => {
     const { name, value } = e.target;
     setNewUser((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle input change untuk form Edit User
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditUserForm((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -151,8 +190,9 @@ export default function ViewAllUsers() {
         role: newUser.role,
         status: newUser.status,
       };
-
-      const res = await fetch("http://localhost:8002/auth/admin/create-user", {
+      // http://localhost:8002/auth/admin/create-user
+      // ${API_BASE}/auth/admin/create-user
+      const res = await fetch(`${API_BASE}/auth/admin/create-user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -163,26 +203,10 @@ export default function ViewAllUsers() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Failed to create user: ${res.status}`);
+        throw new Error(getErrorMessage(errorData) || `Failed to create user: ${res.status}`);
       }
 
-      const createdUser = await res.json();
-
-      // Format user yang baru dibuat untuk ditambahkan ke state
-      const newUserData = {
-        id: createdUser.id,
-        username: createdUser.username,
-        email: createdUser.email,
-        fullName: createdUser.full_name,
-        phoneNumber: createdUser.phone_number || createdUser.phoneNumber,
-        role: createdUser.role,
-        status: createdUser.status === "ACTIVE" ? "Active" : "Inactive",
-        lastLogin: formatDate(createdUser.last_login),
-        createdAt: formatDate(createdUser.created_at),
-        avatarColor: getAvatarColor(createdUser.role),
-      };
-      // Tambah user ke state
-      setUsers((prev) => [newUserData, ...prev]);
+      await fetchUsers(); // Refresh data agar ID dan format sinkron
 
       // Reset form dan tutup modal
       resetNewUserForm();
@@ -193,9 +217,6 @@ export default function ViewAllUsers() {
       // Tampilkan success message
       setErrorMsg(null);
       alert(`User ${newUser.fullName} berhasil ditambahkan!`);
-      setTimeout(() => {
-        setSuccessMsg(null);
-      }, 3000);
     } catch (error) {
       console.error("Error creating user:", error);
       setErrorMsg(error.message || "Gagal menambahkan user. Silakan coba lagi.");
@@ -309,8 +330,8 @@ export default function ViewAllUsers() {
   // Stats calculation dari data real
   const stats = useMemo(() => {
     const total = users.length;
-    const active = users.filter((u) => u.status === "Active").length;
-    const inactive = users.filter((u) => u.status === "Inactive").length;
+    const active = users.filter((u) => u.status === "Active" || u.status === "ACTIVE").length;
+    const inactive = users.filter((u) => u.status === "Inactive" || u.status === "INACTIVE").length;
     const doctors = users.filter((u) => u.role === "Dokter").length;
     const superAdmins = users.filter((u) => u.role === "SuperAdmin").length;
     const patients = users.filter((u) => u.role === "Pasien").length;
@@ -318,8 +339,20 @@ export default function ViewAllUsers() {
     return { total, active, inactive, doctors, superAdmins, patients };
   }, [users]);
 
+  // Handle edit user - buka modal dan set data user yang dipilih
   const handleEditUser = (user) => {
     setSelectedUser(user);
+    setEditUserForm({
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber || "",
+      role: user.role,
+      // LOGIKA: Samakan dengan value dropdown
+      status: user.status === "Active" || user.status === "ACTIVE" ? "Active" : "Inactive",
+    });
+    setEditFormError(null);
+    setEditFormSuccess(null);
     setShowEditModal(true);
   };
 
@@ -332,121 +365,109 @@ export default function ViewAllUsers() {
     setShowAddUserModal(true);
   };
 
-  // Handle toggle status dengan REST API
+  // --- LOGIKA UPDATE STATUS (TOGGLE) ---
   const handleToggleStatus = async (userId, currentStatus) => {
     setUpdatingId(userId);
     setErrorMsg(null);
 
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        setErrorMsg("Token missing. Please login.");
-        setUpdatingId(null);
-        router.push("/auth/login");
-        return;
-      }
-
-      // Find user to update
       const userToUpdate = users.find((u) => u.id === userId);
-      if (!userToUpdate) {
-        throw new Error("User not found");
-      }
 
-      // Tentukan status baru
-      const newStatus = currentStatus === "Active" ? "INACTIVE" : "ACTIVE";
-
-      // Prepare update data
-      const updateData = {
-        full_name: userToUpdate.fullName,
-        username: userToUpdate.username,
-        email: userToUpdate.email,
-        status: newStatus,
-      };
-
-      // Gunakan REST API untuk update user
-      const res = await fetch(`http://localhost:8002/auth/admin/update-user/${userId}`, {
+      // PERBAIKAN: Gunakan format yang Backend minta (Case Sensitive)
+      const newStatus = currentStatus === "Active" || currentStatus === "ACTIVE" ? "Inactive" : "Active";
+      // http://localhost:8002/auth/admin/update-user/${userId}
+      // ${API_BASE}/auth/admin/update-user/${userId}
+      const res = await fetch(`${API_BASE}/auth/admin/update-user/${userId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          full_name: userToUpdate.fullName,
+          username: userToUpdate.username,
+          email: userToUpdate.email,
+          status: newStatus,
+          role: userToUpdate.role,
+          phone_number: userToUpdate.phoneNumber,
+        }),
+      });
+
+      if (!res.ok) throw new Error(getErrorMessage(await res.json()));
+      fetchUsers();
+    } catch (error) {
+      setErrorMsg(error.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // --- LOGIKA DELETE PERMANEN ---
+  const handleDeleteConfirm = async () => {
+    if (!selectedUser) return;
+    setUpdatingId(selectedUser.id);
+    try {
+      const token = localStorage.getItem("token");
+      // http://localhost:8002/auth/admin/delete-user/${selectedUser.id}
+      // ${API_BASE}/auth/admin/delete-user/${selectedUser.id}
+      const res = await fetch(`${API_BASE}/auth/admin/delete-user/${selectedUser.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error(getErrorMessage(await res.json()));
+
+      setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+      setSuccessMsg(`User ${selectedUser.fullName} berhasil dihapus!`);
+      setShowDeleteModal(false);
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (error) {
+      setErrorMsg(error.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // --- LOGIKA UPDATE USER (FORM) ---
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setEditFormError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      // PERBAIKAN: Gunakan status langsung dari state ("Active"/"Inactive") agar lolos validasi Backend
+      const updateData = {
+        full_name: editUserForm.fullName,
+        username: editUserForm.username,
+        email: editUserForm.email,
+        phone_number: editUserForm.phoneNumber || "",
+        role: editUserForm.role,
+        status: editUserForm.status,
+      };
+      // http://localhost:8002/auth/admin/update-user/${selectedUser.id}
+      // ${API_BASE}/auth/admin/update-user/${selectedUser.id}
+      const res = await fetch(`${API_BASE}/auth/admin/update-user/${selectedUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(updateData),
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || "Failed to update user status");
+        const errorData = await res.json();
+        throw new Error(getErrorMessage(errorData));
       }
 
-      const updatedUser = await res.json();
-
-      // Update local state dengan data dari API
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId
-            ? {
-                ...user,
-                status: updatedUser.status === "ACTIVE" ? "Active" : "Inactive",
-                lastLogin: formatDate(updatedUser.last_login),
-                fullName: updatedUser.full_name,
-                username: updatedUser.username,
-                email: updatedUser.email,
-              }
-            : user
-        )
-      );
-
-      setSuccessMsg(`Status user berhasil diubah!`);
-      setTimeout(() => setSuccessMsg(null), 3000);
+      setEditFormSuccess(`User ${editUserForm.fullName} berhasil diupdate!`);
+      setTimeout(() => {
+        setShowEditModal(false);
+        fetchUsers();
+      }, 1500);
     } catch (error) {
-      console.error("Error toggling user status:", error);
-      setErrorMsg(error.message || "Gagal mengubah status user.");
+      setEditFormError(error.message);
     } finally {
-      setUpdatingId(null);
+      setIsSubmitting(false);
     }
   };
-  // Handle actual delete user (set status to INACTIVE)
-  const handleDeleteConfirm = async () => {
-    if (!selectedUser) return;
 
-    setUpdatingId(selectedUser.id);
-    try {
-      await handleToggleStatus(selectedUser.id, selectedUser.status);
-      setShowDeleteModal(false);
-      setSelectedUser(null);
-    } catch (error) {
-      console.error("Delete error:", error);
-      setErrorMsg(error.message || "Gagal menghapus user.");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-  // Handle edit user dengan API
-  const handleEditSubmit = async () => {
-    if (!selectedUser) return;
-
-    setUpdatingId(selectedUser.id);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setErrorMsg("Token missing. Please login.");
-        setUpdatingId(null);
-        router.push("/auth/login");
-        return;
-      }
-
-      // Dalam implementasi nyata, Anda akan mengambil data dari form edit
-      // Untuk sekarang kita hanya toggle status sebagai contoh
-      await handleToggleStatus(selectedUser.id, selectedUser.status);
-      setShowEditModal(false);
-      setSelectedUser(null);
-    } catch (error) {
-      console.error("Edit error:", error);
-      setErrorMsg(error.message || "Gagal mengedit user.");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
   // Refresh data users
   const handleRefresh = () => {
     fetchUsers();
@@ -466,6 +487,7 @@ export default function ViewAllUsers() {
       document.body.style.overflow = "unset";
     };
   }, [showAddUserModal, showEditModal, showDeleteModal]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
@@ -873,7 +895,7 @@ export default function ViewAllUsers() {
         </div>
       </main>
 
-      {/* === MODAL ADD USER (SIMPLE VERSION) === */}
+      {/* === MODAL ADD USER === */}
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-all duration-300 overflow-y-auto">
           <div
@@ -1081,7 +1103,7 @@ export default function ViewAllUsers() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth="2"
-                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
                             />
                           </svg>
                         ) : (
@@ -1229,22 +1251,260 @@ export default function ViewAllUsers() {
         </div>
       )}
 
-      {/* Edit User Modal */}
+      {/* === MODAL EDIT USER === */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Edit User: {selectedUser.fullName}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-all duration-300 overflow-y-auto">
+          <div
+            className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 my-8"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.98) 100%)",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)",
+            }}
+          >
+            {/* Modal Header */}
+            <div className="px-8 py-6 border-b border-gray-100/50 flex justify-between items-center bg-linear-to-r from-white to-gray-50/50 rounded-t-2xl sticky top-0 z-10">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800 tracking-tight">Edit User</h3>
+                <p className="text-sm text-gray-500 mt-1">Update user account information</p>
+                <p className="text-xs text-blue-600 mt-1">User ID: #{selectedUser.id.toString().padStart(3, "0")}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedUser(null);
+                  setEditFormError(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100/50 p-2 rounded-full transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="px-6 py-4">
-              <p className="text-gray-600 mb-4">Edit functionality is under development.</p>
-              <div className="flex justify-end space-x-3">
-                <button onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+
+            {/* Success Message */}
+            {editFormSuccess && (
+              <div className="mx-8 mt-6 rounded-lg border border-green-200 bg-green-50/90 px-5 py-4 text-green-700">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">{editFormSuccess}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {editFormError && (
+              <div className="mx-8 mt-6 rounded-lg border border-red-200 bg-red-50/90 px-5 py-4 text-red-700">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">{editFormError}</span>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="p-8">
+              <div className="space-y-6">
+                {/* Full Name */}
+                <div>
+                  <div className="flex items-center mb-3">
+                    <div className="w-2 h-5 bg-linear-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
+                    <label className="text-sm font-semibold text-gray-700 tracking-wide">
+                      Full Name
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={editUserForm.fullName}
+                    onChange={handleEditFormChange}
+                    className="w-full px-5 py-3.5 bg-white border border-gray-200/80 rounded-xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 placeholder:text-gray-400 text-gray-800 shadow-sm"
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+
+                {/* Username and Email Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Username */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide">
+                      Username
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors">@</div>
+                      <input
+                        type="text"
+                        name="username"
+                        value={editUserForm.username}
+                        onChange={handleEditFormChange}
+                        className="w-full pl-10 pr-5 py-3.5 bg-white border border-gray-200/80 rounded-xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 placeholder:text-gray-400 text-gray-800 shadow-sm"
+                        placeholder="username"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide">
+                      Email
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={editUserForm.email}
+                      onChange={handleEditFormChange}
+                      className="w-full px-5 py-3.5 bg-white border border-gray-200/80 rounded-xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 placeholder:text-gray-400 text-gray-800 shadow-sm"
+                      placeholder="user@sentracare.local"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Role and Status Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Role */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide">
+                      Role
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="role"
+                        value={editUserForm.role}
+                        onChange={handleEditFormChange}
+                        className="w-full px-5 py-3.5 bg-white border border-gray-200/80 rounded-xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 appearance-none text-gray-800 shadow-sm cursor-pointer pr-10"
+                        required
+                      >
+                        <option value="SuperAdmin">Super Admin</option>
+                        <option value="Dokter">Doctor</option>
+                        <option value="Pasien">Patient</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide">
+                      Status
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="status"
+                        value={editUserForm.status}
+                        onChange={handleEditFormChange}
+                        className="w-full px-5 py-3.5 bg-white border border-gray-200/80 rounded-xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 appearance-none text-gray-800 shadow-sm cursor-pointer pr-10"
+                        required
+                      >
+                        <option value="Active" className="text-green-600">
+                          Active
+                        </option>
+                        <option value="Inactive" className="text-gray-600">
+                          Inactive
+                        </option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone Number */}
+                <div>
+                  <div className="flex items-center mb-3">
+                    <div className="w-2 h-5 bg-linear-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
+                    <label className="text-sm font-semibold text-gray-700 tracking-wide">Phone Number</label>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="tel"
+                      name="phoneNumber"
+                      value={editUserForm.phoneNumber}
+                      onChange={handleEditFormChange}
+                      className="w-full pl-12 pr-5 py-3.5 bg-white border border-gray-200/80 rounded-xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 placeholder:text-gray-400 text-gray-800 shadow-sm"
+                      placeholder="+62 812-3456-7890"
+                    />
+                  </div>
+                </div>
+
+                {/* Note about password */}
+                <div className="p-4 bg-yellow-50/80 border border-yellow-200 rounded-xl">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-yellow-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-yellow-800">Password Information</p>
+                      <p className="text-xs text-yellow-700 mt-1">For security reasons, password cannot be changed here. Use the `Reset Password` feature if needed.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="mt-10 pt-6 border-t border-gray-100/50 flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedUser(null);
+                    setEditFormError(null);
+                  }}
+                  className="px-8 py-3.5 border border-gray-300/80 rounded-xl text-gray-700 hover:bg-gray-50/80 hover:border-gray-400 transition-all duration-200 font-medium shadow-sm hover:shadow"
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </button>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Changes</button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`px-8 py-3.5 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center space-x-2 ${
+                    isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Updating User...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -1258,20 +1518,29 @@ export default function ViewAllUsers() {
             </div>
             <div className="px-6 py-4">
               <p className="text-gray-600 mb-4">
-                Are you sure you want to delete user <strong>{selectedUser.fullName}</strong> (@{selectedUser.username})? This action cannot be undone.
+                Are you sure you want to permanently delete user <strong>{selectedUser.fullName}</strong> (@{selectedUser.username})?
+                <br />
+                <br />
+                <span className="text-red-600 font-medium">This action cannot be undone and will remove the user from the database permanently.</span>
               </p>
               <div className="flex justify-end space-x-3">
-                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" disabled={updatingId === selectedUser.id}>
                   Cancel
                 </button>
-                <button
-                  onClick={() => {
-                    setUsers((prev) => prev.filter((user) => user.id !== selectedUser.id));
-                    setShowDeleteModal(false);
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  Delete User
+                <button onClick={handleDeleteConfirm} disabled={updatingId === selectedUser.id} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center space-x-2">
+                  {updatingId === selectedUser.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Delete Permanently</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

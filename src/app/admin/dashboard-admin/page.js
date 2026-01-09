@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
@@ -14,13 +14,15 @@ export default function AdminDashboard() {
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState("");
-
+  const API_BASE = "http://localhost:8088";
   const handleDoctorLogin = async (e) => {
     e.preventDefault();
     setIsAuthenticating(true);
     setAuthError("");
     try {
-      const res = await fetch("http://localhost:8002/auth/login", {
+      // URL bukan dari api gateway http://localhost:8002/auth/login
+      // URL dari api gateway ${API_BASE}/auth/login
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(docAuthData),
@@ -28,7 +30,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Login Gagal");
 
-      const meRes = await fetch("http://localhost:8002/auth/me", {
+      const meRes = await fetch(`${API_BASE}/auth/me`, {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
       const meData = await meRes.json();
@@ -50,14 +52,16 @@ export default function AdminDashboard() {
     }
   };
 
-  // fetch graphQL data users
+  // fetch graphQL data users (Gunakan query allUsers)
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/auth/login");
       return;
     }
-    fetch("http://localhost:8002/graphql", {
+    // http://localhost:8002/graphql
+    // ${API_BASE}/auth/graphql
+    fetch(`${API_BASE}/auth/graphql`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -65,30 +69,30 @@ export default function AdminDashboard() {
       },
       body: JSON.stringify({
         query: `
-        {
-          activeAdminsAndDoctors {
-            id
-            username
-            email
-            role
-            status
-          }
+      {
+        allUsers {
+          id
+          username
+          email
+          role
+          status
         }
-        `,
+      }
+      `,
       }),
     })
       .then((res) => res.json())
       .then((result) => {
-        if (result.data && result.data.activeAdminsAndDoctors) {
-          setUsers(result.data.activeAdminsAndDoctors);
+        if (result.data && result.data.allUsers) {
+          setUsers(result.data.allUsers);
         } else {
           console.error("GraphQL error:", result.errors);
-          setUsers([]); // fallback kosong
+          setUsers([]);
         }
       })
       .catch((err) => {
         console.error("Fetch error:", err);
-        setUsers([]); // fallback kosong
+        setUsers([]);
       });
   }, [router]);
 
@@ -99,7 +103,9 @@ export default function AdminDashboard() {
       router.push("/auth/login");
       return;
     }
-    fetch("http://127.0.0.1:8001/graphql", {
+    // http://127.0.0.1:8001/graphql
+    // ${API_BASE}/booking/graphql
+    fetch(`${API_BASE}/booking/graphql`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -139,7 +145,9 @@ export default function AdminDashboard() {
       router.push("/auth/login");
       return;
     }
-    fetch("http://127.0.0.1:8003/graphql", {
+    // http://127.0.0.1:8003/graphql
+    // ${API_BASE}/pharmacy/graphql
+    fetch(`${API_BASE}/pharmacy/graphql`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -173,60 +181,38 @@ export default function AdminDashboard() {
       });
   }, [router]);
 
-  useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        const token = localStorage.getItem("doctorToken");
-        const doctorName = localStorage.getItem("activeDoctorName");
+  const fetchPatientsREST = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      //  http://localhost:8004/patients
+      // ${API_BASE}/patients/patients-list
+      const res = await fetch(`${API_BASE}/patients/patients-list`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (!token || !doctorName) {
-          throw new Error("Dokter belum login");
-        }
-
-        const res = await fetch("http://localhost:8004/graphql", {
-          // ganti port sesuai patient service
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // kirim JWT ke backend
-          },
-          body: JSON.stringify({
-            query: `
-              query {
-                patientsByDoctor(doctorUsername: "${doctorName}") {
-                  id
-                  fullName
-                  email
-                  phoneNumber
-                  records {
-                    id
-                    diagnosis
-                    notes
-                    doctorUsername
-                    createdAt
-                  }
-                }
-              }
-            `,
-          }),
-        });
-
+      if (res.ok) {
         const data = await res.json();
-        if (data.errors) {
-          throw new Error(data.errors[0].message);
-        }
-
-        setPatients(data.data.patientsByDoctor);
-      } catch (err) {
-        setError(err.message);
+        setPatients(data);
       }
-    };
-
-    fetchPatients();
+    } catch (err) {
+      console.error("Fetch patients REST error:", err);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPatientsREST();
+  }, [fetchPatientsREST]);
 
   // Calculate statistics
   const stats = {
+    totalUsers: users.length,
+    // Hitung user yang rolenya Pasien DAN statusnya Active
+    activePatients: users.filter((u) => u.role.toUpperCase() === "PASIEN" && u.status.toUpperCase() === "ACTIVE").length,
     lowStockItems: obatList.filter((obat) => obat.stock < 10).length,
     pendingBookings: bookings.filter((b) => b.status === "Pending" || b.status === "PENDING").length,
     confirmedBookings: bookings.filter((b) => b.status === "Confirmed" || b.status === "CONFIRMED").length,
@@ -377,7 +363,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-800 mt-1">156</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">{stats.totalUsers}</p>
                 </div>
                 <div className="bg-teal-100 p-3 rounded-full">
                   <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -416,7 +402,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm">Active Patients</p>
-                  <p className="text-2xl font-bold text-gray-800 mt-1">89</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">{stats.activePatients}</p>
                 </div>
                 <div className="bg-purple-100 p-3 rounded-full">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -645,53 +631,52 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Patient Records Card */}
+            {/* --- FIX: PATIENT RECORDS CARD (MENGGUNAKAN LOGIKA REST API) --- */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200">
               <div className="bg-linear-to-r from-purple-600 to-indigo-600 px-6 py-4">
                 <h2 className="text-xl font-bold text-white">Patient Records</h2>
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  <div className="flex items-start p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150">
-                    <div className="bg-teal-100 p-3 rounded-lg mr-4">
-                      <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-bold text-gray-800">Lanang Wisana</h3>
-                          <p className="text-gray-600 text-sm mt-1">Rekam Medis: Check-up 2025</p>
-                          <p className="text-gray-500 text-xs mt-1">Updated: 2025-12-05</p>
+                  {patients && patients.length > 0 ? (
+                    patients.slice(0, 3).map((patient) => {
+                      // Ambil data EMR pertama (terbaru) dari array records sesuai REST structure
+                      const latestRecord = patient.records && patient.records.length > 0 ? patient.records[0] : null;
+                      return (
+                        <div key={patient.id} className="flex items-start p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150">
+                          <div className="bg-teal-100 p-3 rounded-lg mr-4">
+                            <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                {/* patient.full_name dari REST API */}
+                                <h3 className="font-bold text-gray-800">{patient.full_name}</h3>
+                                <p className="text-gray-600 text-sm mt-1">Rekam Medis: {latestRecord?.diagnosis || "Check-up rutin"}</p>
+                                <p className="text-gray-500 text-xs mt-1">Updated: {latestRecord?.visit_date ? new Date(latestRecord.visit_date).toLocaleDateString("id-ID") : "Baru saja"}</p>
+                              </div>
+                              <span className={`px-3 py-1 text-xs font-medium rounded-full ${patient.status === "Active" ? "bg-teal-100 text-teal-800" : "bg-yellow-100 text-yellow-800"}`}>{patient.status || "Active"}</span>
+                            </div>
+                          </div>
                         </div>
-                        <span className="bg-teal-100 text-teal-800 text-xs font-medium px-3 py-1 rounded-full">Active</span>
-                      </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-12 text-center text-gray-400">
+                      <p>Tidak ada data pasien ditemukan.</p>
+                      <p className="text-xs mt-1">Pastikan API Patient Service (Port 8004) berjalan.</p>
                     </div>
-                  </div>
-
-                  <div className="flex items-start p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition duration-150">
-                    <div className="bg-blue-100 p-3 rounded-lg mr-4">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-bold text-gray-800">Sari Dewi</h3>
-                          <p className="text-gray-600 text-sm mt-1">Rekam Medis: Pemeriksaan Rutin</p>
-                          <p className="text-gray-500 text-xs mt-1">Updated: 2025-12-03</p>
-                        </div>
-                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">Follow-up</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 <div className="mt-6 text-center">
-                  <button onClick={() => router.push("/admin/patient")} className="text-teal-600 hover:text-teal-800 font-medium text-sm flex items-center justify-center gap-1">
+                  <button
+                    onClick={() => router.push("/admin/patient")}
+                    className="text-teal-600 hover:text-teal-800 font-medium text-sm flex items-center justify-center gap-1 mx-auto px-4 py-2 rounded-lg hover:bg-teal-50 transition duration-200"
+                  >
                     <span>Access Patient Records</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                   </button>
@@ -756,7 +741,7 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-center">
                     <div className="text-sm text-gray-500">{obatList.length > 0 ? <span>Terakhir diperbarui: {new Date().toLocaleDateString("id-ID")}</span> : <span>Tidak ada data pengguna</span>}</div>
                     <button
-                      onClick={() => router.push("/admin/view-bookings")}
+                      onClick={() => router.push("/admin/pharmacy")}
                       disabled={obatList.length === 0}
                       className={`text-teal-600 hover:text-teal-800 font-medium text-sm flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition duration-200 ${
                         obatList.length === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-teal-50"
@@ -856,77 +841,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </main>
-
-      {/* MODAL POP-UP LOGIN DOKTER */}
-      {/* {showDoctorAuth && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-white/20">
-            <div className="bg-linear-to-r from-teal-600 to-emerald-600 px-6 py-5">
-              <div className="flex items-center">
-                <div className="p-2 bg-white/20 rounded-lg mr-4">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">Doctor Verification Required</h3>
-              </div>
-            </div>
-
-            <form onSubmit={handleDoctorLogin} className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Doctor Email</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-3 text-gray-800 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200"
-                  placeholder="doctor_username"
-                  onChange={(e) => setDocAuthData({ ...docAuthData, identifier: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-3 text-gray-800 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200"
-                  placeholder="password"
-                  onChange={(e) => setDocAuthData({ ...docAuthData, password: e.target.value })}
-                />
-              </div>
-
-              {authError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-sm text-red-600">{authError}</p>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowDoctorAuth(false)} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition duration-200">
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAuthenticating}
-                  className="flex-1 px-4 py-3 bg-linear-to-r from-teal-600 to-emerald-600 text-white rounded-xl hover:from-teal-700 hover:to-emerald-700 transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isAuthenticating ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Verifying...
-                    </>
-                  ) : (
-                    "Verify Credentials"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }
